@@ -5,330 +5,354 @@
 
 @php
     $isAdmin = true;
+    use Carbon\Carbon;
 @endphp
 
 @section('content')
 <div class="space-y-6">
     <!-- HR Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">HR Pending</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">12</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 mt-2">{{ $stats['hr_pending'] ?? 0 }}</p>
                     <p class="text-xs text-orange-600 mt-1">
                         <i class="fas fa-clock mr-1"></i>Awaiting HR approval
                     </p>
                 </div>
-                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-clock text-orange-600 text-xl"></i>
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-clock text-orange-600 text-lg md:text-xl"></i>
                 </div>
             </div>
         </div>
         
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Approved Today</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">5</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 mt-2">{{ $stats['approved_today'] ?? 0 }}</p>
                     <p class="text-xs text-green-600 mt-1">
-                        <i class="fas fa-check-circle mr-1"></i>HR approved
+                        <i class="fas fa-check-circle mr-1"></i>HR approved today
                     </p>
                 </div>
-                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-600 text-lg md:text-xl"></i>
                 </div>
             </div>
         </div>
         
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Departments</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">8</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 mt-2">{{ $stats['total_departments'] ?? 0 }}</p>
                     <p class="text-xs text-purple-600 mt-1">
                         <i class="fas fa-building mr-1"></i>Active departments
                     </p>
                 </div>
-                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-building text-purple-600 text-xl"></i>
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-building text-purple-600 text-lg md:text-xl"></i>
                 </div>
             </div>
         </div>
         
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Total Employees</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">147</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 mt-2">{{ $stats['total_employees'] ?? 0 }}</p>
                     <p class="text-xs text-blue-600 mt-1">
                         <i class="fas fa-users mr-1"></i>All employees
                     </p>
                 </div>
-                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-users text-blue-600 text-xl"></i>
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-users text-blue-600 text-lg md:text-xl"></i>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Filters -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div class="flex flex-col sm:flex-row gap-4">
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>All Departments</option>
-                    <option>Assembly</option>
-                    <option>Spare Parts</option>
-                    <option>Mechanical</option>
-                    <option>Electrical</option>
-                    <option>Sales & Marketing</option>
-                </select>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+        <form method="GET" action="{{ route('admin.leaves.pending') }}" class="space-y-4 md:space-y-0">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                        <select name="department" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="all">All Departments</option>
+                            @foreach($departments as $dept)
+                                <option value="{{ $dept->id }}" {{ request('department') == $dept->id ? 'selected' : '' }}>
+                                    {{ $dept->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                        <select name="leave_type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="all">All Leave Types</option>
+                            @foreach($leaveTypes as $type)
+                                <option value="{{ $type->id }}" {{ request('leave_type') == $type->id ? 'selected' : '' }}>
+                                    {{ $type->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                        <select name="employee" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                            <option value="all">All Employees</option>
+                            @foreach($pendingRequests->pluck('user')->unique() as $user)
+                                <option value="{{ $user->id }}" {{ request('employee') == $user->id ? 'selected' : '' }}>
+                                    {{ $user->first_name }} {{ $user->last_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+                        <input type="date" name="start_date" value="{{ request('start_date') }}" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                    </div>
+                </div>
                 
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>All Leave Types</option>
-                    <option>Annual Leave</option>
-                    <option>Sick Leave</option>
-                    <option>Emergency Leave</option>
-                    <option>Maternity Leave</option>
-                </select>
-                
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>Priority: All</option>
-                    <option>Priority: High</option>
-                    <option>Priority: Medium</option>
-                    <option>Priority: Low</option>
-                </select>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-medium text-sm whitespace-nowrap">
+                        <i class="fas fa-filter mr-2"></i>Apply Filters
+                    </button>
+                    <a href="{{ route('admin.leaves.pending') }}" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 font-medium text-sm text-center whitespace-nowrap">
+                        <i class="fas fa-redo mr-2"></i>Reset
+                    </a>
+                </div>
             </div>
-            
-            <div class="flex space-x-2">
-                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-medium">
-                    <i class="fas fa-filter mr-2"></i>Apply Filters
-                </button>
-                <button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 font-medium">
-                    <i class="fas fa-redo mr-2"></i>Reset
-                </button>
-            </div>
-        </div>
+        </form>
     </div>
 
     <!-- Department-wise Pending Requests -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h3 class="text-lg font-semibold text-gray-800">Pending HR Approvals by Department</h3>
-            <p class="text-sm text-gray-600 mt-1">Leave requests approved by department heads, awaiting HR final approval</p>
-        </div>
-        
-        <div class="divide-y divide-gray-200">
-            <!-- Assembly Department -->
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-lg font-medium text-gray-900 flex items-center">
-                        <i class="fas fa-cogs text-blue-500 mr-2"></i>
-                        Assembly Department
-                    </h4>
-                    <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">3 pending</span>
-                </div>
-                
-                <div class="space-y-4">
-                    <!-- Request Item 1 -->
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                <span class="text-blue-600 text-sm font-semibold">MA</span>
-                            </div>
-                            <div>
-                                <p class="font-medium text-gray-900">Mugisha Andrew</p>
-                                <p class="text-sm text-gray-600">Annual Leave • 5 days</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    <i class="fas fa-user-tie mr-1"></i>Dept Head: John Kamau
-                                </p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-sm text-gray-900">Dec 20 - Dec 24, 2024</p>
-                            <p class="text-xs text-green-600">
-                                <i class="fas fa-check-circle mr-1"></i>Dept Approved: Dec 10
-                            </p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-check mr-2"></i>Approve
-                            </button>
-                            <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-times mr-2"></i>Reject
-                            </button>
-                            <button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-eye mr-2"></i>View
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Request Item 2 -->
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                                <span class="text-green-600 text-sm font-semibold">SS</span>
-                            </div>
-                            <div>
-                                <p class="font-medium text-gray-900">Sarah Smith</p>
-                                <p class="text-sm text-gray-600">Sick Leave • 3 days</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    <i class="fas fa-user-tie mr-1"></i>Dept Head: John Kamau
-                                </p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-sm text-gray-900">Dec 18 - Dec 20, 2024</p>
-                            <p class="text-xs text-green-600">
-                                <i class="fas fa-check-circle mr-1"></i>Dept Approved: Dec 15
-                            </p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-check mr-2"></i>Approve
-                            </button>
-                            <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-times mr-2"></i>Reject
-                            </button>
-                            <button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-eye mr-2"></i>View
-                            </button>
-                        </div>
-                    </div>
-                </div>
+    @if($departmentGroups->count() > 0 && $pendingRequests->count() > 0)
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-4 md:px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-semibold text-gray-800">Pending HR Approvals by Department</h3>
+                <p class="text-sm text-gray-600 mt-1">Leave requests approved by department heads, awaiting HR final approval</p>
             </div>
             
-            <!-- Mechanical Department -->
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-lg font-medium text-gray-900 flex items-center">
-                        <i class="fas fa-wrench text-orange-500 mr-2"></i>
-                        Mechanical Department
-                    </h4>
-                    <span class="px-3 py-1 bg-orange-100 text-orange-800 text-sm rounded-full font-medium">2 pending</span>
-                </div>
-                
-                <div class="space-y-4">
-                    <!-- Request Item -->
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                                <span class="text-purple-600 text-sm font-semibold">MJ</span>
+            <div class="divide-y divide-gray-200">
+                @foreach($departmentGroups as $departmentId => $requests)
+                    @if($requests->count() > 0)
+                        @php
+                            $department = $requests->first()->user->department ?? null;
+                            $pendingCount = $requests->count();
+                            $deptIcon = match($department->name ?? '') {
+                                'Assembly' => 'fa-cogs',
+                                'Mechanical' => 'fa-wrench',
+                                'Electrical' => 'fa-bolt',
+                                'Sales & Marketing' => 'fa-chart-line',
+                                'Spare Parts' => 'fa-box',
+                                'Finance' => 'fa-money-bill-wave',
+                                'HR' => 'fa-users',
+                                'IT' => 'fa-laptop-code',
+                                default => 'fa-building'
+                            };
+                            $deptColor = match($department->name ?? '') {
+                                'Assembly' => 'blue',
+                                'Mechanical' => 'orange',
+                                'Electrical' => 'yellow',
+                                'Sales & Marketing' => 'green',
+                                'Spare Parts' => 'purple',
+                                'Finance' => 'red',
+                                'HR' => 'pink',
+                                'IT' => 'indigo',
+                                default => 'gray'
+                            };
+                        @endphp
+                        
+                        <div class="p-4 md:p-6">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                                <h4 class="text-base md:text-lg font-medium text-gray-900 flex items-center">
+                                    <i class="fas {{ $deptIcon }} text-{{ $deptColor }}-500 mr-2"></i>
+                                    {{ $department->name ?? 'No Department' }}
+                                </h4>
+                                <span class="px-3 py-1 bg-{{ $deptColor }}-100 text-{{ $deptColor }}-800 text-sm rounded-full font-medium whitespace-nowrap">
+                                    {{ $pendingCount }} {{ Str::plural('pending', $pendingCount) }}
+                                </span>
                             </div>
-                            <div>
-                                <p class="font-medium text-gray-900">Mike Johnson</p>
-                                <p class="text-sm text-gray-600">Annual Leave • 10 days</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    <i class="fas fa-user-tie mr-1"></i>Dept Head: Robert Chen
-                                </p>
+                            
+                            <div class="space-y-3 md:space-y-4">
+                                @foreach($requests as $request)
+                                    <div class="approval-item flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-3 md:p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
+                                        <div class="flex items-center space-x-3 md:space-x-4 flex-1">
+                                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center bg-blue-100">
+                                                <span class="text-sm md:text-base font-semibold text-blue-600">
+                                                    {{ substr($request->user->first_name, 0, 1) }}{{ substr($request->user->last_name, 0, 1) }}
+                                                </span>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="font-medium text-gray-900 truncate">
+                                                    {{ $request->user->first_name }} {{ $request->user->last_name }}
+                                                    @if($request->user->employee_id)
+                                                        <span class="text-sm text-gray-500">({{ $request->user->employee_id }})</span>
+                                                    @endif
+                                                </p>
+                                                <p class="text-sm text-gray-600">
+                                                    {{ $request->leaveType->name ?? 'N/A' }} • {{ $request->total_days }} {{ Str::plural('day', $request->total_days) }}
+                                                </p>
+                                                <p class="text-xs text-gray-500 mt-1">
+                                                    <i class="fas fa-user-tie mr-1"></i>
+                                                    @if($department && $department->manager)
+                                                        Dept Manager: {{ $department->manager->first_name }} {{ $department->manager->last_name }}
+                                                    @else
+                                                        No Dept Manager
+                                                    @endif
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="flex flex-col md:text-right space-y-1">
+                                            <p class="text-sm text-gray-900">
+                                                {{ Carbon::parse($request->start_date)->format('M d') }} - {{ Carbon::parse($request->end_date)->format('M d, Y') }}
+                                            </p>
+                                            @php
+                                                $deptApproval = $request->approvals->where('level', 'department_head')->where('status', 'approved')->first();
+                                            @endphp
+                                            @if($deptApproval)
+                                                <p class="text-xs text-green-600">
+                                                    <i class="fas fa-check-circle mr-1"></i>
+                                                    Dept Approved: {{ Carbon::parse($deptApproval->created_at)->format('M d') }}
+                                                </p>
+                                            @endif
+                                            @if($request->is_urgent ?? false)
+                                                <span class="inline-block px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full mt-1">
+                                                    <i class="fas fa-exclamation-circle mr-1"></i>Urgent
+                                                </span>
+                                            @endif
+                                        </div>
+                                        
+                                        <div class="flex flex-wrap gap-2">
+                                            <form action="{{ route('leaves.approve', $request->id) }}" method="POST" class="inline">
+                                                @csrf
+                                                <button type="submit" 
+                                                        onclick="return confirm('Approve leave request for {{ $request->user->first_name }} {{ $request->user->last_name }}?')"
+                                                        class="approve-btn bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition duration-200 text-sm font-medium whitespace-nowrap">
+                                                    <i class="fas fa-check mr-1 md:mr-2"></i><span class="hidden sm:inline">Approve</span>
+                                                </button>
+                                            </form>
+                                            
+                                            <button type="button" 
+                                                    data-request-id="{{ $request->id }}"
+                                                    data-employee-name="{{ $request->user->first_name }} {{ $request->user->last_name }}"
+                                                    class="reject-btn bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition duration-200 text-sm font-medium whitespace-nowrap">
+                                                <i class="fas fa-times mr-1 md:mr-2"></i><span class="hidden sm:inline">Reject</span>
+                                            </button>
+                                            
+                                            <a href="{{ route('leaves.details', $request->id) }}" 
+                                               class="bg-gray-200 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-300 transition duration-200 text-sm font-medium whitespace-nowrap">
+                                                <i class="fas fa-eye mr-1 md:mr-2"></i><span class="hidden sm:inline">View</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                @endforeach
                             </div>
                         </div>
-                        <div class="text-right">
-                            <p class="text-sm text-gray-900">Jan 5 - Jan 14, 2024</p>
-                            <p class="text-xs text-green-600">
-                                <i class="fas fa-check-circle mr-1"></i>Dept Approved: Dec 12
-                            </p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-check mr-2"></i>Approve
-                            </button>
-                            <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-times mr-2"></i>Reject
-                            </button>
-                            <button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-eye mr-2"></i>View
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sales & Marketing Department -->
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-lg font-medium text-gray-900 flex items-center">
-                        <i class="fas fa-chart-line text-green-500 mr-2"></i>
-                        Sales & Marketing
-                    </h4>
-                    <span class="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium">4 pending</span>
-                </div>
-                
-                <div class="space-y-4">
-                    <!-- Request Item -->
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                                <span class="text-red-600 text-sm font-semibold">AL</span>
-                            </div>
-                            <div>
-                                <p class="font-medium text-gray-900">Alice Lopez</p>
-                                <p class="text-sm text-gray-600">Maternity Leave • 90 days</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    <i class="fas fa-user-tie mr-1"></i>Dept Head: Maria Garcia
-                                </p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-sm text-gray-900">Mar 1 - May 29, 2024</p>
-                            <p class="text-xs text-green-600">
-                                <i class="fas fa-check-circle mr-1"></i>Dept Approved: Dec 11
-                            </p>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-check mr-2"></i>Approve
-                            </button>
-                            <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-times mr-2"></i>Reject
-                            </button>
-                            <button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 text-sm font-medium">
-                                <i class="fas fa-eye mr-2"></i>View
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                    @endif
+                @endforeach
             </div>
         </div>
-    </div>
+    @else
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">No Pending Approvals</h3>
+            <p class="text-gray-600">All leave requests have been processed. Great job!</p>
+        </div>
+    @endif
 
     <!-- Quick Actions -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition duration-200">
-                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-check-double text-blue-600"></i>
+    @if($pendingRequests->count() > 0)
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <button onclick="if(confirm('Approve all {{ $stats['hr_pending'] ?? 0 }} pending requests?')) { document.getElementById('approve-all-form').submit(); }"
+                        class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition duration-200 w-full">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-check-double text-blue-600"></i>
+                    </div>
+                    <div class="text-left flex-1">
+                        <p class="font-medium text-gray-800">Approve All</p>
+                        <p class="text-sm text-gray-600">Approve {{ $stats['hr_pending'] ?? 0 }} pending requests</p>
+                    </div>
+                </button>
+                
+                <a href="{{ route('leaves.export') }}?{{ http_build_query(request()->all()) }}"
+                   class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-200 transition duration-200 w-full">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-file-export text-green-600"></i>
+                    </div>
+                    <div class="text-left flex-1">
+                        <p class="font-medium text-gray-800">Export Report</p>
+                        <p class="text-sm text-gray-600">Download pending approvals</p>
+                    </div>
+                </a>
+                
+                <button onclick="sendReminders()"
+                        class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-purple-50 hover:border-purple-200 transition duration-200 w-full">
+                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-envelope text-purple-600"></i>
+                    </div>
+                    <div class="text-left flex-1">
+                        <p class="font-medium text-gray-800">Send Reminders</p>
+                        <p class="text-sm text-gray-600">Notify department heads</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    @endif
+</div>
+
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="rejectForm" method="POST">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Reject Leave Request</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
                 </div>
-                <div class="text-left">
-                    <p class="font-medium text-gray-800">Approve All</p>
-                    <p class="text-sm text-gray-600">Approve all pending requests</p>
+                <div class="modal-body">
+                    <div id="employeeInfo" class="mb-4 p-3 bg-gray-50 rounded-lg"></div>
+                    <div class="form-group">
+                        <label for="rejection_reason" class="block text-sm font-medium text-gray-700 mb-1">Reason for Rejection *</label>
+                        <textarea name="rejection_reason" id="rejection_reason" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                  rows="4" required
+                                  placeholder="Please provide a reason for rejection..."></textarea>
+                    </div>
                 </div>
-            </button>
-            
-            <button class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-200 transition duration-200">
-                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-file-export text-green-600"></i>
+                <div class="modal-footer">
+                    <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition duration-200" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200">Submit Rejection</button>
                 </div>
-                <div class="text-left">
-                    <p class="font-medium text-gray-800">Export Report</p>
-                    <p class="text-sm text-gray-600">Download pending approvals</p>
-                </div>
-            </button>
-            
-            <button class="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-purple-50 hover:border-purple-200 transition duration-200">
-                <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-envelope text-purple-600"></i>
-                </div>
-                <div class="text-left">
-                    <p class="font-medium text-gray-800">Send Reminders</p>
-                    <p class="text-sm text-gray-600">Notify department heads</p>
-                </div>
-            </button>
+            </form>
         </div>
     </div>
 </div>
+
+<!-- Approve All Form (hidden) -->
+<form id="approve-all-form" action="{{ route('leaves.approve-all') }}" method="POST" class="hidden">
+    @csrf
+    @foreach(request()->all() as $key => $value)
+        @if(!in_array($key, ['_token', '_method']))
+            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+        @endif
+    @endforeach
+</form>
+
 @endsection
 
 @push('styles')
@@ -342,84 +366,105 @@
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     
-    .department-header {
-        border-left: 4px solid transparent;
-    }
-    
-    .department-header.assembly {
-        border-left-color: #3b82f6;
-    }
-    
-    .department-header.mechanical {
-        border-left-color: #f59e0b;
-    }
-    
-    .department-header.sales {
-        border-left-color: #10b981;
+    @media (max-width: 768px) {
+        .approval-item {
+            padding: 0.75rem;
+        }
     }
 </style>
 @endpush
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Add department-specific styling
-        const departmentHeaders = document.querySelectorAll('.p-6');
-        departmentHeaders.forEach(header => {
-            if (header.querySelector('.fa-cogs')) {
-                header.querySelector('h4').classList.add('department-header', 'assembly');
-            } else if (header.querySelector('.fa-wrench')) {
-                header.querySelector('h4').classList.add('department-header', 'mechanical');
-            } else if (header.querySelector('.fa-chart-line')) {
-                header.querySelector('h4').classList.add('department-header', 'sales');
+        let currentRejectId = null;
+        
+        // Reject button click handler
+        document.querySelectorAll('.reject-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                currentRejectId = this.dataset.requestId;
+                const employeeName = this.dataset.employeeName;
+                
+                document.getElementById('employeeInfo').innerHTML = `
+                    <p class="font-medium text-gray-800">Rejecting leave request for:</p>
+                    <p class="text-lg font-semibold text-red-600">${employeeName}</p>
+                `;
+                
+                document.getElementById('rejectForm').action = `/admin/leaves/${currentRejectId}/reject`;
+                $('#rejectModal').modal('show');
+            });
+        });
+        
+        // Reject form submission
+        document.getElementById('rejectForm').addEventListener('submit', function(e) {
+            if (!this.rejection_reason.value.trim()) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Reason Required',
+                    text: 'Please provide a reason for rejection.',
+                });
             }
         });
-
-        // Add approval/reject functionality
-        const approveButtons = document.querySelectorAll('button:contains("Approve")');
-        const rejectButtons = document.querySelectorAll('button:contains("Reject")');
         
-        approveButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const item = this.closest('.flex.items-center.justify-between');
-                const employeeName = item.querySelector('.font-medium').textContent;
-                if (confirm(`Approve leave request for ${employeeName}?`)) {
+        // Approve button animation
+        document.querySelectorAll('.approve-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const form = this.closest('form');
+                const item = this.closest('.approval-item');
+                
+                if (item) {
                     item.style.opacity = '0.5';
-                    setTimeout(() => {
-                        item.remove();
-                        updatePendingCounts();
-                    }, 500);
+                    item.style.pointerEvents = 'none';
                 }
-            });
-        });
-        
-        rejectButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const item = this.closest('.flex.items-center.justify-between');
-                const employeeName = item.querySelector('.font-medium').textContent;
-                if (confirm(`Reject leave request for ${employeeName}?`)) {
-                    item.style.opacity = '0.5';
-                    setTimeout(() => {
-                        item.remove();
-                        updatePendingCounts();
-                    }, 500);
-                }
-            });
-        });
-
-        function updatePendingCounts() {
-            // This would typically update the counts from the server
-            console.log('Pending counts updated');
-        }
-
-        // Add filter functionality
-        const filterButtons = document.querySelectorAll('button:contains("Apply Filters"), button:contains("Reset")');
-        filterButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const action = this.textContent.includes('Apply') ? 'applied' : 'reset';
-                alert(`Filters ${action}. This would filter the pending requests.`);
+                
+                // Submit the form
+                form.submit();
             });
         });
     });
+    
+    function sendReminders() {
+        Swal.fire({
+            title: 'Send Reminders?',
+            text: 'Send reminder emails to department heads about pending approvals?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Send Reminders',
+            cancelButtonText: 'Cancel',
+            showLoaderOnConfirm: true,
+            preConfirm: () => {
+                return fetch('{{ route("leaves.send-reminders") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(response.statusText);
+                    }
+                    return response.json();
+                })
+                .catch(error => {
+                    Swal.showValidationMessage(
+                        `Request failed: ${error}`
+                    );
+                });
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Reminders have been sent to department heads.',
+                    icon: 'success',
+                    timer: 3000
+                });
+            }
+        });
+    }
 </script>
 @endpush

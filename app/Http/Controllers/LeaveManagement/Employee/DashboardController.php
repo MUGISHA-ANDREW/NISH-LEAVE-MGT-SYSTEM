@@ -11,30 +11,39 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
-    {
-        $user = Auth::user();
-        $currentYear = date('Y');
+   public function index()
+{
+    $user = Auth::user();
+    $currentYear = date('Y');
 
-        // Get leave balances
-        $leaveBalances = $this->getLeaveBalances($user->id, $currentYear);
-        
-        // Get quick stats
-        $quickStats = $this->getQuickStats($user->id, $currentYear);
-        
-        // Get upcoming leaves
-        $upcomingLeaves = $this->getUpcomingLeaves($user->id);
-        
-        // Get recent applications
-        $recentApplications = $this->getRecentApplications($user->id);
+    // Get leave balances
+    $leaveBalances = $this->getLeaveBalances($user->id, $currentYear);
+    
+    // Get quick stats
+    $quickStats = $this->getQuickStats($user->id, $currentYear);
+    
+    // Get upcoming leaves with approvals loaded
+    $upcomingLeaves = $this->getUpcomingLeaves($user->id)->load('approvals');
+    
+    // Get recent applications with approvals loaded
+    $recentApplications = $this->getRecentApplications($user->id)->load('approvals');
 
-        return view('modules.leave-management.employee.dashboard', compact(
-            'leaveBalances',
-            'quickStats',
-            'upcomingLeaves',
-            'recentApplications'
-        ));
-    }
+    // Add workflow status to each leave request
+    $upcomingLeaves->each(function($leave) {
+        $leave->workflow_status = $this->getLeaveStatusWithWorkflow($leave);
+    });
+    
+    $recentApplications->each(function($leave) {
+        $leave->workflow_status = $this->getLeaveStatusWithWorkflow($leave);
+    });
+
+    return view('modules.leave-management.employee.dashboard', compact(
+        'leaveBalances',
+        'quickStats',
+        'upcomingLeaves',
+        'recentApplications'
+    ));
+}
 
     private function getLeaveBalances($userId, $year)
     {
@@ -229,4 +238,57 @@ class DashboardController extends Controller
             'recommended_usage' => $recommendedUsage
         ];
     }
+
+ 
+
+// Add this method to your DashboardController class
+private function getLeaveStatusWithWorkflow($leaveRequest)
+{
+    // Check if approvals are loaded
+    if (!$leaveRequest->relationLoaded('approvals')) {
+        $leaveRequest->load('approvals');
+    }
+    
+    $status = $leaveRequest->status;
+    $deptHeadApproval = $leaveRequest->approvals->where('level', 'department_head')->first();
+    $hrApproval = $leaveRequest->approvals->where('level', 'hr_admin')->first();
+    
+    if ($status == 'pending') {
+        if (!$deptHeadApproval) {
+            return [
+                'status' => 'pending',
+                'badge_class' => 'bg-yellow-100 text-yellow-800',
+                'text' => 'Pending Department Head',
+                'progress' => 0
+            ];
+        } elseif ($deptHeadApproval && $deptHeadApproval->status == 'approved' && !$hrApproval) {
+            return [
+                'status' => 'pending',
+                'badge_class' => 'bg-blue-100 text-blue-800',
+                'text' => 'Pending HR Approval',
+                'progress' => 50
+            ];
+        } elseif ($deptHeadApproval && $deptHeadApproval->status == 'rejected') {
+            return [
+                'status' => 'rejected',
+                'badge_class' => 'bg-red-100 text-red-800',
+                'text' => 'Rejected by Department Head',
+                'progress' => 0
+            ];
+        }
+    }
+    
+    // Return default status
+    return [
+        'status' => $status,
+        'badge_class' => match($status) {
+            'approved' => 'bg-green-100 text-green-800',
+            'rejected' => 'bg-red-100 text-red-800',
+            'cancelled' => 'bg-gray-100 text-gray-800',
+            default => 'bg-yellow-100 text-yellow-800'
+        },
+        'text' => ucfirst($status),
+        'progress' => $status == 'approved' ? 100 : 0
+    ];
+}
 }

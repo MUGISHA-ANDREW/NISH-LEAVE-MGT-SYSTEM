@@ -47,6 +47,30 @@ class LeaveRequest extends Model
         return $this->belongsTo(User::class, 'action_by');
     }
 
+    /**
+     * Get the approval records for this leave request
+     */
+    public function approvals()
+    {
+        return $this->hasMany(Approval::class);
+    }
+
+    /**
+     * Get department head approval
+     */
+    public function departmentHeadApproval()
+    {
+        return $this->hasOne(Approval::class)->where('level', 'department_head');
+    }
+
+    /**
+     * Get HR admin approval
+     */
+    public function hrAdminApproval()
+    {
+        return $this->hasOne(Approval::class)->where('level', 'hr_admin');
+    }
+
     // Scopes
     public function scopePending($query)
     {
@@ -76,6 +100,42 @@ class LeaveRequest extends Model
     }
 
     /**
+     * Get approval workflow status
+     */
+    public function getApprovalStatus()
+    {
+        $departmentApproval = $this->departmentHeadApproval;
+        $hrApproval = $this->hrAdminApproval;
+        
+        if (!$departmentApproval && !$hrApproval) {
+            return 'not_started';
+        }
+        
+        if ($departmentApproval && $departmentApproval->status === 'rejected') {
+            return 'rejected_by_dept';
+        }
+        
+        if ($hrApproval && $hrApproval->status === 'rejected') {
+            return 'rejected_by_hr';
+        }
+        
+        if ($departmentApproval && $departmentApproval->status === 'approved' && 
+            $hrApproval && $hrApproval->status === 'approved') {
+            return 'fully_approved';
+        }
+        
+        if ($departmentApproval && $departmentApproval->status === 'approved' && !$hrApproval) {
+            return 'pending_hr_approval';
+        }
+        
+        if ($departmentApproval && $departmentApproval->status === 'pending') {
+            return 'pending_dept_approval';
+        }
+        
+        return 'in_progress';
+    }
+
+    /**
      * Check if leave request can be edited
      */
     public function canBeEdited()
@@ -97,5 +157,27 @@ class LeaveRequest extends Model
     public function canBeRetrieved()
     {
         return $this->status === 'cancelled' && $this->start_date > now();
+    }
+
+    /**
+     * Get the current approver based on workflow
+     */
+    public function getCurrentApprover()
+    {
+        $approvalStatus = $this->getApprovalStatus();
+        
+        switch ($approvalStatus) {
+            case 'not_started':
+            case 'pending_dept_approval':
+                return $this->user->department->head ?? null;
+                
+            case 'pending_hr_approval':
+                return User::whereHas('role', function($query) {
+                    $query->where('name', 'hr_admin');
+                })->first();
+                
+            default:
+                return null;
+        }
     }
 }

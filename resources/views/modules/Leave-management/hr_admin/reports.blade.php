@@ -5,61 +5,112 @@
 
 @php
     $isAdmin = true;
+    use Carbon\Carbon;
+    
+    // Dynamic data passed from controller
+    $totalLeaveDays = $stats['total_leave_days'] ?? 0;
+    $avgLeaveDuration = $stats['avg_leave_duration'] ?? 0;
+    $mostCommonLeaveType = $stats['most_common_leave_type'] ?? 'N/A';
+    $approvalRate = $stats['approval_rate'] ?? 0;
+    $departments = $departments ?? collect();
+    $leaveTypes = $leaveTypes ?? collect();
+    $monthlyData = $monthlyData ?? [];
+    $leaveDistribution = $leaveDistribution ?? [];
+    $departmentStats = $departmentStats ?? [];
+    $recentLeaves = $recentLeaves ?? collect();
 @endphp
+
+@if(session('error'))
+<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
+    {{ session('error') }}
+</div>
+@endif
+
+@if($recentLeaves->count() === 0 && empty($monthlyData))
+<div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg mb-6">
+    <p class="font-medium">No data available for the selected period.</p>
+    <p class="text-sm mt-1">Try selecting a different date range or check if there are any leave requests in your system.</p>
+    
+    <!-- Quick actions -->
+    <div class="mt-3 flex space-x-3">
+        <a href="{{ route('admin.leaves.history') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+            <i class="fas fa-history mr-1"></i> View Leave History
+        </a>
+        <a href="{{ route('employee.dashboard') }}" target="_blank" class="text-green-600 hover:text-green-800 text-sm font-medium">
+            <i class="fas fa-user-plus mr-1"></i> Create Test Leave Request
+        </a>
+    </div>
+</div>
+@endif
 
 @section('content')
 <!-- Report Filters -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
     <h3 class="text-lg font-semibold text-gray-800 mb-4">Report Filters</h3>
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <!-- Date Range -->
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-            <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 3 months</option>
-                <option>Last 6 months</option>
-                <option>Year to date</option>
-                <option>Custom range</option>
-            </select>
+    <form method="GET" action="{{ route('admin.reports') }}" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Date Range -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                <select name="period" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="7" {{ request('period') == '7' ? 'selected' : '' }}>Last 7 days</option>
+                    <option value="30" {{ request('period') == '30' ? 'selected' : '' }}>Last 30 days</option>
+                    <option value="90" {{ request('period') == '90' ? 'selected' : '' }}>Last 3 months</option>
+                    <option value="180" {{ request('period') == '180' ? 'selected' : '' }}>Last 6 months</option>
+                    <option value="ytd" {{ request('period') == 'ytd' ? 'selected' : '' }}>Year to date</option>
+                    <option value="custom" {{ request('period') == 'custom' ? 'selected' : '' }}>Custom range</option>
+                </select>
+            </div>
+            
+            <!-- Department -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <select name="department" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="all">All Departments</option>
+                    @foreach($departments as $dept)
+                        <option value="{{ $dept->id }}" {{ request('department') == $dept->id ? 'selected' : '' }}>
+                            {{ $dept->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            
+            <!-- Report Type -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
+                <select name="report_type" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="summary" {{ request('report_type') == 'summary' ? 'selected' : '' }}>Leave Summary</option>
+                    <option value="department" {{ request('report_type') == 'department' ? 'selected' : '' }}>Department Analysis</option>
+                    <option value="trends" {{ request('report_type') == 'trends' ? 'selected' : '' }}>Leave Trends</option>
+                    <option value="employee" {{ request('report_type') == 'employee' ? 'selected' : '' }}>Employee Utilization</option>
+                </select>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex items-end space-x-3">
+                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 font-medium">
+                    Generate Report
+                </button>
+                <button type="button" onclick="exportReport()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
+                    <i class="fas fa-download text-gray-600"></i>
+                </button>
+            </div>
         </div>
         
-        <!-- Department -->
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-            <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option>All Departments</option>
-                <option>Assembly</option>
-                <option>Spare Parts</option>
-                <option>Mechanical</option>
-                <option>Electrical</option>
-                <option>Sales</option>
-            </select>
+        <!-- Custom Date Range (hidden by default) -->
+        @if(request('period') == 'custom')
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+            </div>
         </div>
-        
-        <!-- Report Type -->
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
-            <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <option>Leave Summary</option>
-                <option>Attendance</option>
-                <option>Department Analysis</option>
-                <option>Employee Utilization</option>
-                <option>Leave Trends</option>
-            </select>
-        </div>
-        
-        <!-- Action Buttons -->
-        <div class="flex items-end space-x-3">
-            <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 font-medium">
-                Generate Report
-            </button>
-            <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
-                <i class="fas fa-download text-gray-600"></i>
-            </button>
-        </div>
-    </div>
+        @endif
+    </form>
 </div>
 
 <!-- Report Summary Cards -->
@@ -69,7 +120,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600">Total Leave Days</p>
-                <p class="text-3xl font-bold text-gray-800 mt-2">1,247</p>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ number_format($totalLeaveDays) }}</p>
                 <p class="text-xs text-blue-600 mt-1">
                     <i class="fas fa-calendar-alt mr-1"></i>This period
                 </p>
@@ -85,7 +136,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600">Avg. Leave Duration</p>
-                <p class="text-3xl font-bold text-gray-800 mt-2">3.2</p>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ number_format($avgLeaveDuration, 1) }}</p>
                 <p class="text-xs text-green-600 mt-1">
                     <i class="fas fa-clock mr-1"></i>Days per request
                 </p>
@@ -101,9 +152,14 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600">Most Common Type</p>
-                <p class="text-3xl font-bold text-gray-800 mt-2">Sick</p>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ $mostCommonLeaveType }}</p>
                 <p class="text-xs text-purple-600 mt-1">
-                    <i class="fas fa-stethoscope mr-1"></i>42% of all leaves
+                    <i class="fas fa-stethoscope mr-1"></i>
+                    @if(isset($stats['most_common_percentage']))
+                        {{ number_format($stats['most_common_percentage'], 1) }}% of all leaves
+                    @else
+                        Most requested
+                    @endif
                 </p>
             </div>
             <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -117,7 +173,7 @@
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-medium text-gray-600">Approval Rate</p>
-                <p class="text-3xl font-bold text-gray-800 mt-2">89%</p>
+                <p class="text-3xl font-bold text-gray-800 mt-2">{{ number_format($approvalRate, 1) }}%</p>
                 <p class="text-xs text-orange-600 mt-1">
                     <i class="fas fa-check-circle mr-1"></i>Of all requests
                 </p>
@@ -136,9 +192,9 @@
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-800">Leave Trends Over Time</h3>
             <div class="flex space-x-2">
-                <button class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg font-medium">Monthly</button>
-                <button class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg font-medium">Quarterly</button>
-                <button class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg font-medium">Yearly</button>
+                <button onclick="updateChartPeriod('monthly')" class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-lg font-medium">Monthly</button>
+                <button onclick="updateChartPeriod('quarterly')" class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg font-medium">Quarterly</button>
+                <button onclick="updateChartPeriod('yearly')" class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg font-medium">Yearly</button>
             </div>
         </div>
         <div class="h-64">
@@ -158,80 +214,84 @@
 <!-- Detailed Reports Table -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
     <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-gray-800">Detailed Leave Report</h3>
+        <h3 class="text-lg font-semibold text-gray-800">Recent Leave Requests</h3>
         <div class="flex space-x-3">
-            <button class="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
-                <i class="fas fa-file-export text-gray-600"></i>
-                <span class="text-sm font-medium text-gray-700">Export</span>
-            </button>
-            <button class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
-                <i class="fas fa-print"></i>
-                <span class="text-sm font-medium">Print</span>
-            </button>
+            <a href="{{ route('admin.leaves.history') }}" class="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
+                <i class="fas fa-list text-gray-600"></i>
+                <span class="text-sm font-medium text-gray-700">View All</span>
+            </a>
+            <a href="{{ route('leaves.export') }}?{{ http_build_query(request()->all()) }}" class="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200">
+                <i class="fas fa-file-export"></i>
+                <span class="text-sm font-medium">Export</span>
+            </a>
         </div>
     </div>
     
-    <div class="overflow-x-auto">
-        <table class="w-full">
-            <thead>
-                <tr class="bg-gray-50 border-b border-gray-200">
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                <!-- Table Row -->
-                <tr class="hover:bg-gray-50 transition duration-150">
-                    <td class="py-3 px-4">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                <span class="text-blue-600 text-sm font-semibold">JD</span>
-                            </div>
-                            <span class="text-sm font-medium text-gray-800">John Doe</span>
-                        </div>
-                    </td>
-                    <td class="py-3 px-4 text-sm text-gray-700">Assembly</td>
-                    <td class="py-3 px-4 text-sm text-gray-700">Sick Leave</td>
-                    <td class="py-3 px-4 text-sm text-gray-700">3 days</td>
-                    <td class="py-3 px-4">
-                        <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full font-medium">Approved</span>
-                    </td>
-                    <td class="py-3 px-4 text-sm text-gray-700">15-18 Dec 2023</td>
-                </tr>
-                
-                <!-- More table rows would go here -->
-                
-            </tbody>
-        </table>
-    </div>
-    
-    <!-- Pagination -->
-    <div class="flex items-center justify-between mt-6">
-        <div class="text-sm text-gray-700">
-            Showing <span class="font-medium">1</span> to <span class="font-medium">10</span> of <span class="font-medium">97</span> results
+    @if($recentLeaves->count() > 0)
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach($recentLeaves as $leave)
+                        @php
+                            $statusColors = [
+                                'approved' => 'green',
+                                'pending' => 'yellow',
+                                'rejected' => 'red',
+                                'cancelled' => 'gray'
+                            ];
+                            $statusColor = $statusColors[$leave->status] ?? 'gray';
+                            $initials = substr($leave->user->first_name ?? 'E', 0, 1) . substr($leave->user->last_name ?? 'M', 0, 1);
+                        @endphp
+                        <tr class="hover:bg-gray-50 transition duration-150">
+                            <td class="py-3 px-4">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-blue-600 text-sm font-semibold">{{ strtoupper($initials) }}</span>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-800">
+                                        {{ $leave->user->first_name }} {{ $leave->user->last_name }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-gray-700">
+                                {{ $leave->user->department->name ?? 'N/A' }}
+                            </td>
+                            <td class="py-3 px-4 text-sm text-gray-700">
+                                {{ $leave->leaveType->name ?? 'N/A' }}
+                            </td>
+                            <td class="py-3 px-4 text-sm text-gray-700">
+                                {{ $leave->total_days }} days
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-1 text-xs bg-{{ $statusColor }}-100 text-{{ $statusColor }}-800 rounded-full font-medium capitalize">
+                                    {{ $leave->status }}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 text-sm text-gray-700">
+                                {{ Carbon::parse($leave->start_date)->format('d M Y') }} - 
+                                {{ Carbon::parse($leave->end_date)->format('d M Y') }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
-        <div class="flex space-x-2">
-            <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-150">
-                Previous
-            </button>
-            <button class="px-3 py-1 border border-gray-300 bg-blue-600 text-white rounded-lg text-sm font-medium">
-                1
-            </button>
-            <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-150">
-                2
-            </button>
-            <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-150">
-                3
-            </button>
-            <button class="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-150">
-                Next
-            </button>
+    @else
+        <div class="text-center py-8">
+            <i class="fas fa-calendar-times text-gray-400 text-3xl mb-3"></i>
+            <p class="text-gray-500">No leave requests found for the selected period</p>
         </div>
-    </div>
+    @endif
 </div>
 
 <!-- Department Comparison -->
@@ -244,17 +304,29 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Prepare data from PHP
+        const monthlyLabels = @json(array_keys($monthlyData));
+        const monthlyValues = @json(array_values($monthlyData));
+        
+        const leaveTypeLabels = @json(array_keys($leaveDistribution));
+        const leaveTypeValues = @json(array_values($leaveDistribution));
+        
+        const deptLabels = @json(array_column($departmentStats, 'name'));
+        const deptLeaveDays = @json(array_column($departmentStats, 'leave_days'));
+        const deptAvgDuration = @json(array_column($departmentStats, 'avg_duration'));
+
         // Leave Trends Chart
         const trendsCtx = document.getElementById('trendsChart').getContext('2d');
         const trendsChart = new Chart(trendsCtx, {
             type: 'line',
             data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                labels: monthlyLabels,
                 datasets: [{
                     label: 'Leave Requests',
-                    data: [45, 52, 38, 64, 55, 70, 65, 59, 48, 62, 58, 71],
+                    data: monthlyValues,
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderColor: '#3B82F6',
                     borderWidth: 2,
@@ -267,7 +339,11 @@
                 maintainAspectRatio: false,
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Requests'
+                        }
                     }
                 }
             }
@@ -278,22 +354,23 @@
         const leaveTypeChart = new Chart(leaveTypeCtx, {
             type: 'pie',
             data: {
-                labels: ['Sick Leave', 'Vacation', 'Personal', 'Maternity', 'Paternity', 'Other'],
+                labels: leaveTypeLabels,
                 datasets: [{
-                    data: [42, 28, 12, 8, 5, 5],
+                    data: leaveTypeValues,
                     backgroundColor: [
-                        '#3B82F6',
-                        '#10B981',
-                        '#F59E0B',
-                        '#EF4444',
-                        '#8B5CF6',
-                        '#6B7280'
+                        '#3B82F6', '#10B981', '#F59E0B', '#EF4444', 
+                        '#8B5CF6', '#6B7280', '#EC4899', '#14B8A6'
                     ]
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
             }
         });
 
@@ -302,16 +379,16 @@
         const deptCompChart = new Chart(deptCompCtx, {
             type: 'bar',
             data: {
-                labels: ['Assembly', 'Spare Parts', 'Mechanical', 'Electrical', 'Sales'],
+                labels: deptLabels,
                 datasets: [{
-                    label: 'Leave Days',
-                    data: [320, 240, 180, 120, 80],
+                    label: 'Total Leave Days',
+                    data: deptLeaveDays,
                     backgroundColor: '#3B82F6',
                     borderColor: '#3B82F6',
                     borderWidth: 1
                 }, {
-                    label: 'Avg. Duration',
-                    data: [3.5, 2.8, 4.2, 3.1, 2.5],
+                    label: 'Avg. Duration (Days)',
+                    data: deptAvgDuration,
                     backgroundColor: '#10B981',
                     borderColor: '#10B981',
                     borderWidth: 1,
@@ -344,6 +421,18 @@
                 }
             }
         });
+
+        window.updateChartPeriod = function(period) {
+            // Update URL with new period parameter
+            const url = new URL(window.location.href);
+            url.searchParams.set('chart_period', period);
+            window.location.href = url.toString();
+        };
+
+        window.exportReport = function() {
+            const params = new URLSearchParams(window.location.search);
+            window.location.href = `{{ route('leaves.export') }}?${params.toString()}`;
+        };
     });
 </script>
 @endpush

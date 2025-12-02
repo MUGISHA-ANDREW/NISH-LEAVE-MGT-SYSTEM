@@ -106,23 +106,33 @@
         <div class="space-y-3">
             @forelse($upcomingLeaves as $leave)
                 @php
-                    $statusColors = [
-                        'approved' => ['bg' => 'green', 'border' => 'green'],
-                        'pending' => ['bg' => 'yellow', 'border' => 'yellow'],
-                        'rejected' => ['bg' => 'red', 'border' => 'red']
-                    ];
-                    $color = $statusColors[$leave->status] ?? $statusColors['pending'];
+                    // Get workflow status
+                    $workflowStatus = $leave->workflow_status ?? $this->getLeaveStatusWithWorkflow($leave);
+                    $badgeColor = $workflowStatus['badge_class'] ?? 'bg-yellow-100 text-yellow-800';
                 @endphp
-                <div class="flex items-center justify-between p-3 border border-{{ $color['border'] }}-200 bg-{{ $color['bg'] }}-50 rounded-lg">
+                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
                     <div>
                         <p class="font-medium text-gray-800">{{ $leave->leaveType->name }}</p>
                         <p class="text-sm text-gray-600">
-                            {{ $leave->start_date->format('M d') }} - {{ $leave->end_date->format('M d, Y') }}
+                            {{ \Carbon\Carbon::parse($leave->start_date)->format('M d') }} - 
+                            {{ \Carbon\Carbon::parse($leave->end_date)->format('M d, Y') }}
+                            <span class="ml-2">({{ $leave->total_days }} days)</span>
                         </p>
                     </div>
-                    <span class="px-3 py-1 bg-{{ $color['bg'] }}-100 text-{{ $color['bg'] }}-800 text-xs rounded-full font-medium">
-                        {{ ucfirst($leave->status) }}
-                    </span>
+                    <div class="text-right">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $badgeColor }}">
+                            {{ $workflowStatus['text'] ?? ucfirst($leave->status) }}
+                        </span>
+                        
+                        @if(($workflowStatus['progress'] ?? 0) > 0 && ($workflowStatus['progress'] ?? 0) < 100)
+                        <div class="mt-1">
+                            <div class="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+                                <div class="h-full bg-blue-500" style="width: {{ $workflowStatus['progress'] ?? 0 }}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">{{ $workflowStatus['progress'] ?? 0 }}% complete</p>
+                        </div>
+                        @endif
+                    </div>
                 </div>
             @empty
                 <div class="text-center py-4">
@@ -153,18 +163,17 @@
                         <th class="text-left py-3 text-sm font-medium text-gray-600">Period</th>
                         <th class="text-left py-3 text-sm font-medium text-gray-600">Duration</th>
                         <th class="text-left py-3 text-sm font-medium text-gray-600">Status</th>
+                        <th class="text-left py-3 text-sm font-medium text-gray-600">Progress</th>
                         <th class="text-left py-3 text-sm font-medium text-gray-600">Applied On</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     @foreach($recentApplications as $application)
                         @php
-                            $statusColors = [
-                                'approved' => 'green',
-                                'pending' => 'yellow', 
-                                'rejected' => 'red'
-                            ];
-                            $color = $statusColors[$application->status] ?? 'gray';
+                            // Get workflow status
+                            $workflowStatus = $application->workflow_status ?? $this->getLeaveStatusWithWorkflow($application);
+                            $badgeColor = $workflowStatus['badge_class'] ?? 'bg-yellow-100 text-yellow-800';
+                            
                             $icons = [
                                 'Annual' => 'umbrella-beach',
                                 'Sick' => 'procedures',
@@ -183,15 +192,29 @@
                                 </div>
                             </td>
                             <td class="py-4 text-sm text-gray-600">
-                                {{ $application->start_date->format('M d') }} - {{ $application->end_date->format('M d, Y') }}
+                                {{ \Carbon\Carbon::parse($application->start_date)->format('M d') }} - 
+                                {{ \Carbon\Carbon::parse($application->end_date)->format('M d, Y') }}
                             </td>
                             <td class="py-4 text-sm text-gray-600">{{ $application->total_days }} days</td>
                             <td class="py-4">
-                                <span class="px-3 py-1 bg-{{ $color }}-100 text-{{ $color }}-800 text-xs rounded-full font-medium">
-                                    {{ ucfirst($application->status) }}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium {{ $badgeColor }}">
+                                    {{ $workflowStatus['text'] ?? ucfirst($application->status) }}
                                 </span>
                             </td>
-                            <td class="py-4 text-sm text-gray-600">{{ $application->created_at->format('M d, Y') }}</td>
+                            <td class="py-4">
+                                @if(($workflowStatus['progress'] ?? 0) > 0)
+                                    <div class="w-24">
+                                        <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div class="h-full {{ ($workflowStatus['progress'] ?? 0) == 100 ? 'bg-green-500' : 'bg-blue-500' }}" 
+                                                 style="width: {{ $workflowStatus['progress'] ?? 0 }}%"></div>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1 text-center">{{ $workflowStatus['progress'] ?? 0 }}%</p>
+                                    </div>
+                                @else
+                                    <span class="text-xs text-gray-500">-</span>
+                                @endif
+                            </td>
+                            <td class="py-4 text-sm text-gray-600">{{ \Carbon\Carbon::parse($application->created_at)->format('M d, Y') }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -207,4 +230,88 @@
         </div>
     @endif
 </div>
+
+<!-- Approval Workflow Explanation -->
+<div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mt-8">
+    <h3 class="text-lg font-semibold text-blue-800 mb-3">Leave Approval Workflow</h3>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="text-center">
+            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <i class="fas fa-paper-plane text-blue-600"></i>
+            </div>
+            <p class="text-sm font-medium text-blue-800">Submitted</p>
+            <p class="text-xs text-blue-600">You apply for leave</p>
+        </div>
+        
+        <div class="text-center">
+            <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <i class="fas fa-user-tie text-yellow-600"></i>
+            </div>
+            <p class="text-sm font-medium text-yellow-800">Department Head</p>
+            <p class="text-xs text-yellow-600">Approves or rejects</p>
+        </div>
+        
+        <div class="text-center">
+            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <i class="fas fa-users text-blue-600"></i>
+            </div>
+            <p class="text-sm font-medium text-blue-800">HR Admin</p>
+            <p class="text-xs text-blue-600">Final approval</p>
+        </div>
+        
+        <div class="text-center">
+            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <i class="fas fa-check-circle text-green-600"></i>
+            </div>
+            <p class="text-sm font-medium text-green-800">Approved</p>
+            <p class="text-xs text-green-600">Leave is confirmed</p>
+        </div>
+    </div>
+    
+    <div class="mt-4 text-sm text-blue-700">
+        <p><i class="fas fa-info-circle mr-2"></i>Status meanings:</p>
+        <ul class="list-disc pl-5 mt-2 space-y-1">
+            <li><span class="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded">Pending Department Head</span> - Waiting for your manager's approval</li>
+            <li><span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">Pending HR</span> - Approved by manager, waiting for HR</li>
+            <li><span class="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded">Approved</span> - Fully approved and confirmed</li>
+            <li><span class="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded">Rejected</span> - Not approved</li>
+        </ul>
+    </div>
+</div>
 @endsection
+
+@push('styles')
+<style>
+    .progress-bar {
+        transition: width 0.3s ease;
+    }
+    
+    .status-badge {
+        transition: all 0.2s ease;
+    }
+    
+    .status-badge:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add hover effects to status badges
+        document.querySelectorAll('.status-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            });
+            
+            badge.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = 'none';
+            });
+        });
+    });
+</script>
+@endpush

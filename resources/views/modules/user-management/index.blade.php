@@ -5,6 +5,8 @@
 
 @php
     $isAdmin = true;
+    use App\Models\LeaveRequest;
+    use Carbon\Carbon;
 @endphp
 
 @section('content')
@@ -18,13 +20,17 @@
             </div>
             
             <div class="flex flex-col sm:flex-row gap-3">
-                <!-- Search -->
-                <div class="relative">
+                <!-- Search Form -->
+                <form method="GET" action="{{ route('admin.employees') }}" class="relative">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <i class="fas fa-search text-gray-400"></i>
                     </div>
-                    <input type="text" placeholder="Search employees..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64">
-                </div>
+                    <input type="text" 
+                           name="search" 
+                           value="{{ request('search') }}"
+                           placeholder="Search employees..." 
+                           class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64">
+                </form>
                 
                 <!-- Add Employee Button -->
                 <a href="{{ route('admin.employees.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-medium flex items-center space-x-2">
@@ -42,9 +48,9 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Total Employees</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">147</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ number_format($stats['total_employees']) }}</p>
                     <p class="text-xs text-green-600 mt-1">
-                        <i class="fas fa-arrow-up mr-1"></i>12% increase
+                        <i class="fas fa-users mr-1"></i>All employees
                     </p>
                 </div>
                 <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -58,9 +64,10 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">Active</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">142</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ number_format($stats['active_employees']) }}</p>
                     <p class="text-xs text-green-600 mt-1">
-                        <i class="fas fa-check-circle mr-1"></i>96.6% active
+                        <i class="fas fa-check-circle mr-1"></i>
+                        {{ $stats['total_employees'] > 0 ? round(($stats['active_employees'] / $stats['total_employees']) * 100, 1) : 0 }}% active
                     </p>
                 </div>
                 <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -73,10 +80,10 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm font-medium text-gray-600">On Leave</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">18</p>
+                    <p class="text-sm font-medium text-gray-600">On Leave Today</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ number_format($stats['on_leave_today']) }}</p>
                     <p class="text-xs text-orange-600 mt-1">
-                        <i class="fas fa-calendar-day mr-1"></i>Today
+                        <i class="fas fa-calendar-day mr-1"></i>{{ Carbon::now()->format('M d, Y') }}
                     </p>
                 </div>
                 <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -90,9 +97,9 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm font-medium text-gray-600">New This Month</p>
-                    <p class="text-3xl font-bold text-gray-800 mt-2">8</p>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">{{ number_format($stats['new_this_month']) }}</p>
                     <p class="text-xs text-purple-600 mt-1">
-                        <i class="fas fa-user-plus mr-1"></i>Hires
+                        <i class="fas fa-user-plus mr-1"></i>{{ Carbon::now()->format('M Y') }} hires
                     </p>
                 </div>
                 <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -104,54 +111,48 @@
 
     <!-- Filters and Actions -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <form method="GET" action="{{ route('admin.employees') }}" class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div class="flex flex-col sm:flex-row gap-4">
                 <!-- Department Filter -->
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>All Departments</option>
-                    <option>Assembly</option>
-                    <option>Spare Parts</option>
-                    <option>Mechanical</option>
-                    <option>Electrical</option>
-                    <option>Painting</option>
-                    <option>Quality Control</option>
-                    <option>Logistics</option>
-                    <option>Sales & Marketing</option>
-                    <option>Human Resources</option>
-                    <option>Finance</option>
-                    <option>IT Support</option>
+                <select name="department" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="all">All Departments</option>
+                    @foreach($departments as $department)
+                        <option value="{{ $department->id }}" {{ request('department') == $department->id ? 'selected' : '' }}>
+                            {{ $department->name }}
+                        </option>
+                    @endforeach
                 </select>
                 
                 <!-- Status Filter -->
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>All Status</option>
-                    <option>Active</option>
-                    <option>On Leave</option>
-                    <option>Inactive</option>
-                    <option>Suspended</option>
+                <select name="status" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="all">All Status</option>
+                    <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
+                    <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    <option value="suspended" {{ request('status') == 'suspended' ? 'selected' : '' }}>Suspended</option>
                 </select>
                 
                 <!-- Role Filter -->
-                <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>All Roles</option>
-                    <option>Employee</option>
-                    <option>Department Head</option>
-                    <option>HR Admin</option>
-                    <option>System Admin</option>
+                <select name="role" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="all">All Roles</option>
+                    @foreach($roles as $role)
+                        <option value="{{ $role->name }}" {{ request('role') == $role->name ? 'selected' : '' }}>
+                            {{ ucfirst($role->name) }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
             
             <div class="flex space-x-2">
-                <button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 font-medium flex items-center space-x-2">
-                    <i class="fas fa-download"></i>
-                    <span>Export</span>
+                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-medium flex items-center space-x-2">
+                    <i class="fas fa-filter"></i>
+                    <span>Apply Filters</span>
                 </button>
-                <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-medium flex items-center space-x-2">
+                <a href="{{ route('admin.employees') }}" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 font-medium flex items-center space-x-2">
                     <i class="fas fa-sync-alt"></i>
-                    <span>Refresh</span>
-                </button>
+                    <span>Clear All</span>
+                </a>
             </div>
-        </div>
+        </form>
     </div>
 
     <!-- Employees Table -->
@@ -162,7 +163,7 @@
                     <tr>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <div class="flex items-center space-x-2">
-                                <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <input type="checkbox" id="select-all" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                 <span>Employee</span>
                             </div>
                         </th>
@@ -175,269 +176,179 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    <!-- Employee 1 -->
-                    <tr class="hover:bg-gray-50 transition duration-150">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                        <span class="text-blue-600 font-semibold">MA</span>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">Mugisha Andrew</div>
-                                        <div class="text-sm text-gray-500">NISH-045</div>
+                    @forelse($users as $user)
+                        @php
+                            // Calculate leave balance for this user
+                            $leaveBalance = app()->make('App\Http\Controllers\UserManagement\UserController')->calculateLeaveBalance($user);
+                            $percentage = $leaveBalance['percentage'];
+                            $remaining = $leaveBalance['remaining'];
+                            $total = $leaveBalance['total'];
+                            
+                            // Determine leave bar color
+                            $leaveColor = $percentage < 30 ? 'green' : ($percentage < 70 ? 'yellow' : 'red');
+                            
+                            // Get status color
+                            $statusColor = 'green';
+                            $statusText = 'Active';
+                            $isOnLeave = false;
+                            
+                            // Check if user is on leave today
+                            $onLeave = LeaveRequest::where('user_id', $user->id)
+                                ->where('status', 'approved')
+                                ->whereDate('start_date', '<=', Carbon::today())
+                                ->whereDate('end_date', '>=', Carbon::today())
+                                ->exists();
+                            
+                            if ($onLeave) {
+                                $statusColor = 'orange';
+                                $statusText = 'On Leave';
+                                $isOnLeave = true;
+                            } elseif ($user->status == 'inactive') {
+                                $statusColor = 'gray';
+                                $statusText = 'Inactive';
+                            } elseif ($user->status == 'suspended') {
+                                $statusColor = 'red';
+                                $statusText = 'Suspended';
+                            }
+                            
+                            // Get initials for avatar
+                            $initials = strtoupper(substr($user->first_name, 0, 1) . substr($user->last_name, 0, 1));
+                            
+                            // Get department icon
+                            $deptIcon = 'fa-building';
+                            if ($user->department) {
+                                $deptName = strtolower($user->department->name);
+                                if (str_contains($deptName, 'assembly')) $deptIcon = 'fa-cogs';
+                                elseif (str_contains($deptName, 'mechanical')) $deptIcon = 'fa-wrench';
+                                elseif (str_contains($deptName, 'electrical')) $deptIcon = 'fa-bolt';
+                                elseif (str_contains($deptName, 'sales')) $deptIcon = 'fa-chart-line';
+                                elseif (str_contains($deptName, 'hr')) $deptIcon = 'fa-users';
+                                elseif (str_contains($deptName, 'finance')) $deptIcon = 'fa-dollar-sign';
+                                elseif (str_contains($deptName, 'it')) $deptIcon = 'fa-laptop-code';
+                            }
+                        @endphp
+                        <tr class="hover:bg-gray-50 transition duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <input type="checkbox" class="employee-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3" value="{{ $user->id }}">
+                                    <div class="flex items-center space-x-3">
+                                        @if($user->profile_picture)
+                                            <img src="{{ Storage::url($user->profile_picture) }}" 
+                                                 alt="{{ $user->first_name }}" 
+                                                 class="w-10 h-10 rounded-full object-cover">
+                                        @else
+                                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                                <span class="text-blue-600 font-semibold">{{ $initials }}</span>
+                                            </div>
+                                        @endif
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900">
+                                                {{ $user->first_name }} {{ $user->last_name }}
+                                                @if($user->role && in_array($user->role->name, ['department_head', 'admin', 'hr_admin']))
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 ml-2">
+                                                        <i class="fas fa-user-tie mr-1"></i>
+                                                        {{ ucfirst(str_replace('_', ' ', $user->role->name)) }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div class="text-sm text-gray-500">{{ $user->employee_id }}</div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center space-x-2">
-                                <i class="fas fa-cogs text-blue-500"></i>
-                                <span class="text-sm text-gray-900">Assembly</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Assembly Technician</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Active</span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Jan 15, 2022</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-16 bg-gray-200 rounded-full h-2">
-                                    <div class="bg-green-500 h-2 rounded-full" style="width: 72%"></div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas {{ $deptIcon }} text-blue-500"></i>
+                                    <span class="text-sm text-gray-900">{{ $user->department->name ?? 'No Department' }}</span>
                                 </div>
-                                <span class="text-sm text-gray-900">18/25</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center space-x-2">
-                                <button class="text-blue-600 hover:text-blue-900" title="View Profile">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <a href="{{ route('admin.employees.edit', 1) }}" class="text-green-600 hover:text-green-900" title="Edit">
-                                    <i class="fas fa-edit"></i>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->position ?? 'Not specified' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-3 py-1 bg-{{ $statusColor }}-100 text-{{ $statusColor }}-800 text-xs rounded-full font-medium">
+                                    {{ $statusText }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ $user->join_date ? Carbon::parse($user->join_date)->format('M d, Y') : 'Not set' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-16 bg-gray-200 rounded-full h-2">
+                                        <div class="bg-{{ $leaveColor }}-500 h-2 rounded-full" style="width: {{ $percentage }}%"></div>
+                                    </div>
+                                    <span class="text-sm text-gray-900">{{ $remaining }}/{{ $total }}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex items-center space-x-2">
+                                    <a href="{{ route('users.profile', $user->id) }}" class="text-blue-600 hover:text-blue-900 action-button" title="View Profile">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ route('admin.employees.edit', $user->id) }}" class="text-green-600 hover:text-green-900 action-button" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="text-orange-600 hover:text-orange-900 action-button leave-history-btn" data-user-id="{{ $user->id }}" title="Leave History">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                    @if($user->id !== Auth::id())
+                                        <form action="{{ route('users.destroy', $user->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this employee?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900 action-button" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-6 py-12 text-center">
+                                <i class="fas fa-users text-gray-400 text-4xl mb-3"></i>
+                                <p class="text-gray-500">No employees found</p>
+                                <a href="{{ route('admin.employees.create') }}" class="text-blue-600 hover:text-blue-500 mt-2 inline-block">
+                                    Add your first employee
                                 </a>
-                                <button class="text-orange-600 hover:text-orange-900" title="Leave History">
-                                    <i class="fas fa-history"></i>
-                                </button>
-                                <button class="text-red-600 hover:text-red-900" title="Deactivate">
-                                    <i class="fas fa-user-slash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- Employee 2 -->
-                    <tr class="hover:bg-gray-50 transition duration-150">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                        <span class="text-green-600 font-semibold">SS</span>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">Sarah Smith</div>
-                                        <div class="text-sm text-gray-500">NISH-078</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center space-x-2">
-                                <i class="fas fa-cogs text-blue-500"></i>
-                                <span class="text-sm text-gray-900">Assembly</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Senior Technician</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-3 py-1 bg-orange-100 text-orange-800 text-xs rounded-full font-medium">On Leave</span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Mar 22, 2021</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-16 bg-gray-200 rounded-full h-2">
-                                    <div class="bg-yellow-500 h-2 rounded-full" style="width: 40%"></div>
-                                </div>
-                                <span class="text-sm text-gray-900">10/25</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center space-x-2">
-                                <button class="text-blue-600 hover:text-blue-900">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <a href="{{ route('admin.employees.edit', 2) }}" class="text-green-600 hover:text-green-900">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <button class="text-orange-600 hover:text-orange-900">
-                                    <i class="fas fa-history"></i>
-                                </button>
-                                <button class="text-red-600 hover:text-red-900">
-                                    <i class="fas fa-user-slash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- Employee 3 -->
-                    <tr class="hover:bg-gray-50 transition duration-150">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                        <span class="text-purple-600 font-semibold">MJ</span>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">Mike Johnson</div>
-                                        <div class="text-sm text-gray-500">NISH-112</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center space-x-2">
-                                <i class="fas fa-wrench text-orange-500"></i>
-                                <span class="text-sm text-gray-900">Mechanical</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Mechanical Engineer</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Active</span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Aug 10, 2020</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-16 bg-gray-200 rounded-full h-2">
-                                    <div class="bg-blue-500 h-2 rounded-full" style="width: 60%"></div>
-                                </div>
-                                <span class="text-sm text-gray-900">15/25</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center space-x-2">
-                                <button class="text-blue-600 hover:text-blue-900">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <a href="{{ route('admin.employees.edit', 3) }}" class="text-green-600 hover:text-green-900">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <button class="text-orange-600 hover:text-orange-900">
-                                    <i class="fas fa-history"></i>
-                                </button>
-                                <button class="text-red-600 hover:text-red-900">
-                                    <i class="fas fa-user-slash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- Employee 4 - Department Head -->
-                    <tr class="hover:bg-gray-50 transition duration-150">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-3">
-                                <div class="flex items-center space-x-3">
-                                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                                        <span class="text-red-600 font-semibold">JK</span>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-medium text-gray-900">John Kamau</div>
-                                        <div class="text-sm text-gray-500">NISH-023</div>
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                            <i class="fas fa-user-tie mr-1"></i>Dept Head
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center space-x-2">
-                                <i class="fas fa-cogs text-blue-500"></i>
-                                <span class="text-sm text-gray-900">Assembly</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Assembly Manager</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Active</span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Jun 05, 2019</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-16 bg-gray-200 rounded-full h-2">
-                                    <div class="bg-green-500 h-2 rounded-full" style="width: 80%"></div>
-                                </div>
-                                <span class="text-sm text-gray-900">20/25</span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex items-center space-x-2">
-                                <button class="text-blue-600 hover:text-blue-900">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <a href="{{ route('admin.employees.edit', 4) }}" class="text-green-600 hover:text-green-900">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <button class="text-orange-600 hover:text-orange-900">
-                                    <i class="fas fa-history"></i>
-                                </button>
-                                <button class="text-red-600 hover:text-red-900">
-                                    <i class="fas fa-user-slash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-
-                    <!-- More employees can be added here -->
+                            </td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
 
         <!-- Pagination -->
+        @if($users->hasPages())
         <div class="bg-white px-6 py-4 border-t border-gray-200">
             <div class="flex items-center justify-between">
                 <div class="text-sm text-gray-700">
-                    Showing <span class="font-medium">1</span> to <span class="font-medium">4</span> of <span class="font-medium">147</span> employees
+                    Showing <span class="font-medium">{{ $users->firstItem() }}</span> 
+                    to <span class="font-medium">{{ $users->lastItem() }}</span> 
+                    of <span class="font-medium">{{ $users->total() }}</span> employees
                 </div>
                 <div class="flex space-x-2">
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50">
-                        Previous
-                    </button>
-                    <button class="px-3 py-1 border border-blue-500 rounded-md text-sm font-medium text-blue-600 bg-blue-50">
-                        1
-                    </button>
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50">
-                        2
-                    </button>
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50">
-                        3
-                    </button>
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-500 bg-white hover:bg-gray-50">
-                        Next
-                    </button>
+                    {{ $users->links('pagination::tailwind') }}
                 </div>
             </div>
         </div>
+        @endif
     </div>
 
     <!-- Bulk Actions -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Bulk Actions</h3>
         <div class="flex flex-wrap gap-3">
-            <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                <option>Bulk Actions</option>
-                <option>Export Selected</option>
-                <option>Send Email</option>
-                <option>Assign to Department</option>
-                <option>Change Status</option>
-                <option>Generate Reports</option>
+            <select id="bulk-action" class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="">Bulk Actions</option>
+                <option value="export">Export Selected</option>
+                <option value="email">Send Email</option>
+                <option value="activate">Activate Selected</option>
+                <option value="deactivate">Deactivate Selected</option>
             </select>
-            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-medium">
+            <button id="apply-bulk-action" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 font-medium">
                 Apply
             </button>
-            <button class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 font-medium">
+            <button id="clear-selection" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 font-medium">
                 Clear Selection
             </button>
         </div>
@@ -474,48 +385,136 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Select all checkbox functionality
-        const selectAll = document.querySelector('thead input[type="checkbox"]');
-        const employeeCheckboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+        const selectAll = document.getElementById('select-all');
+        const employeeCheckboxes = document.querySelectorAll('.employee-checkbox');
         
         selectAll.addEventListener('change', function() {
             employeeCheckboxes.forEach(checkbox => {
                 checkbox.checked = this.checked;
             });
+            updateBulkActionButton();
         });
 
         // Individual checkbox functionality
         employeeCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function() {
                 const allChecked = Array.from(employeeCheckboxes).every(cb => cb.checked);
+                const anyChecked = Array.from(employeeCheckboxes).some(cb => cb.checked);
                 selectAll.checked = allChecked;
+                selectAll.indeterminate = anyChecked && !allChecked;
+                updateBulkActionButton();
             });
         });
 
-        // Add hover effects to action buttons
-        const actionButtons = document.querySelectorAll('.action-button');
-        actionButtons.forEach(button => {
-            button.addEventListener('mouseenter', function() {
-                this.style.transform = 'scale(1.1)';
+        // Update bulk action button state
+        function updateBulkActionButton() {
+            const anyChecked = Array.from(employeeCheckboxes).some(cb => cb.checked);
+            document.getElementById('apply-bulk-action').disabled = !anyChecked;
+        }
+
+        // Clear selection
+        document.getElementById('clear-selection').addEventListener('click', function() {
+            employeeCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
             });
-            button.addEventListener('mouseleave', function() {
-                this.style.transform = 'scale(1)';
-            });
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+            updateBulkActionButton();
         });
 
-        // Search functionality
-        const searchInput = document.querySelector('input[placeholder="Search employees..."]');
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const rows = document.querySelectorAll('tbody tr');
+        // Bulk action handler
+        document.getElementById('apply-bulk-action').addEventListener('click', function() {
+            const action = document.getElementById('bulk-action').value;
+            const selectedIds = Array.from(employeeCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
             
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+            if (!action) {
+                alert('Please select a bulk action');
+                return;
+            }
+            
+            if (selectedIds.length === 0) {
+                alert('Please select at least one employee');
+                return;
+            }
+            
+            switch(action) {
+                case 'export':
+                    exportSelectedEmployees(selectedIds);
+                    break;
+                case 'email':
+                    sendBulkEmail(selectedIds);
+                    break;
+                case 'activate':
+                    bulkUpdateStatus(selectedIds, 'active');
+                    break;
+                case 'deactivate':
+                    bulkUpdateStatus(selectedIds, 'inactive');
+                    break;
+            }
+        });
+
+        // Export selected employees
+        function exportSelectedEmployees(ids) {
+            const url = new URL('{{ route("admin.employees") }}');
+            url.searchParams.set('export', 'true');
+            ids.forEach(id => url.searchParams.append('ids[]', id));
+            window.location.href = url.toString();
+        }
+
+        // Send bulk email
+        function sendBulkEmail(ids) {
+            // Implement bulk email functionality
+            alert(`Sending email to ${ids.length} selected employees`);
+        }
+
+        // Bulk update status
+        function bulkUpdateStatus(ids, status) {
+            if (confirm(`Are you sure you want to ${status} ${ids.length} employee(s)?`)) {
+                fetch('{{ route("admin.employees.bulk-status") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        ids: ids,
+                        status: status
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error updating employee status');
+                });
+            }
+        }
+
+        // Leave history button click
+        document.querySelectorAll('.leave-history-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                window.location.href = `/admin/leave-history?user_id=${userId}`;
             });
+        });
+
+        // Search functionality with debounce
+        const searchInput = document.querySelector('input[name="search"]');
+        let searchTimeout;
+        
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.closest('form').submit();
+            }, 500);
         });
     });
 </script>
