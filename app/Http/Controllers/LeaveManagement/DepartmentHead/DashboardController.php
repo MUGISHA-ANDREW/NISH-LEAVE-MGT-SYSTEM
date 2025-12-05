@@ -5,6 +5,7 @@ namespace App\Http\Controllers\LeaveManagement\DepartmentHead;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\LeaveRequest;
 use App\Models\Department;
 use App\Models\User;
@@ -53,24 +54,24 @@ class DashboardController extends Controller
      */
    public function approveLeave(Request $request, $id)
 {
-    \Log::info('=== APPROVE LEAVE METHOD STARTED ===');
-    \Log::info('Leave ID: ' . $id);
-    \Log::info('User ID: ' . Auth::id());
-    \Log::info('Request Data: ', $request->all());
+    Log::info('=== APPROVE LEAVE METHOD STARTED ===');
+    Log::info('Leave ID: ' . $id);
+    Log::info('User ID: ' . Auth::id());
+    Log::info('Request Data: ', $request->all());
     
     try {
-        \Log::info('Looking for leave request with ID: ' . $id);
+        Log::info('Looking for leave request with ID: ' . $id);
         $leaveRequest = LeaveRequest::with('user')->find($id);
         
         if (!$leaveRequest) {
-            \Log::error('Leave request not found with ID: ' . $id);
+            Log::error('Leave request not found with ID: ' . $id);
             return response()->json([
                 'success' => false,
                 'message' => 'Leave request not found.'
             ], 404);
         }
         
-        \Log::info('Leave request found:', [
+        Log::info('Leave request found:', [
             'id' => $leaveRequest->id,
             'user_id' => $leaveRequest->user_id,
             'user_department_id' => $leaveRequest->user->department_id,
@@ -78,7 +79,7 @@ class DashboardController extends Controller
         ]);
 
         $user = Auth::user();
-        \Log::info('Current user:', [
+        Log::info('Current user:', [
             'id' => $user->id,
             'department_id' => $user->department_id,
             'name' => $user->name
@@ -86,7 +87,7 @@ class DashboardController extends Controller
         
         // Check if the leave request belongs to user's department
         if ($leaveRequest->user->department_id !== $user->department_id) {
-            \Log::error('Department mismatch:', [
+            Log::error('Department mismatch:', [
                 'leave_user_department' => $leaveRequest->user->department_id,
                 'current_user_department' => $user->department_id
             ]);
@@ -98,7 +99,7 @@ class DashboardController extends Controller
 
         // Check if already processed
         if ($leaveRequest->status !== 'pending') {
-            \Log::warning('Leave already processed:', [
+            Log::warning('Leave already processed:', [
                 'current_status' => $leaveRequest->status
             ]);
             return response()->json([
@@ -113,7 +114,7 @@ class DashboardController extends Controller
             ->first();
             
         if ($existingApproval) {
-            \Log::warning('Department head already approved this request:', [
+            Log::warning('Department head already approved this request:', [
                 'approval_status' => $existingApproval->status
             ]);
             return response()->json([
@@ -122,7 +123,7 @@ class DashboardController extends Controller
             ], 400);
         }
 
-        \Log::info('Creating department head approval record');
+        Log::info('Creating department head approval record');
         
         // Create approval record instead of updating leave request status
         $approval = \App\Models\Approval::create([
@@ -133,7 +134,7 @@ class DashboardController extends Controller
             'remarks' => $request->head_remarks ?? 'Approved by department head - Waiting for HR approval'
         ]);
         
-        \Log::info('Approval record created:', [
+        Log::info('Approval record created:', [
             'approval_id' => $approval->id,
             'level' => $approval->level,
             'status' => $approval->status
@@ -143,15 +144,15 @@ class DashboardController extends Controller
         // Leave it as 'pending' for HR approval
         // $leaveRequest->status remains 'pending'
         
-        \Log::info('=== APPROVE LEAVE METHOD COMPLETED SUCCESSFULLY ===');
+        Log::info('=== APPROVE LEAVE METHOD COMPLETED SUCCESSFULLY ===');
         return response()->json([
             'success' => true,
             'message' => 'Leave request approved by department head. Now waiting for HR approval.'
         ]);
         
     } catch (\Exception $e) {
-        \Log::error('Error in approveLeave method: ' . $e->getMessage());
-        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        Log::error('Error in approveLeave method: ' . $e->getMessage());
+        Log::error('Stack trace: ' . $e->getTraceAsString());
         
         return response()->json([
             'success' => false,
@@ -165,24 +166,24 @@ class DashboardController extends Controller
      */
     public function rejectLeave(Request $request, $id)
     {
-        \Log::info('=== REJECT LEAVE METHOD STARTED ===');
-        \Log::info('Leave ID: ' . $id);
-        \Log::info('User ID: ' . Auth::id());
-        \Log::info('Request Data: ', $request->all());
+        Log::info('=== REJECT LEAVE METHOD STARTED ===');
+        Log::info('Leave ID: ' . $id);
+        Log::info('User ID: ' . Auth::id());
+        Log::info('Request Data: ', $request->all());
         
         try {
-            \Log::info('Looking for leave request with ID: ' . $id);
+            Log::info('Looking for leave request with ID: ' . $id);
             $leaveRequest = LeaveRequest::with('user')->find($id);
             
             if (!$leaveRequest) {
-                \Log::error('Leave request not found with ID: ' . $id);
+                Log::error('Leave request not found with ID: ' . $id);
                 return response()->json([
                     'success' => false,
                     'message' => 'Leave request not found.'
                 ], 404);
             }
             
-            \Log::info('Leave request found:', [
+            Log::info('Leave request found:', [
                 'id' => $leaveRequest->id,
                 'user_id' => $leaveRequest->user_id,
                 'user_department_id' => $leaveRequest->user->department_id,
@@ -190,7 +191,7 @@ class DashboardController extends Controller
             ]);
 
             $user = Auth::user();
-            \Log::info('Current user:', [
+            Log::info('Current user:', [
                 'id' => $user->id,
                 'department_id' => $user->department_id,
                 'name' => $user->name
@@ -198,7 +199,7 @@ class DashboardController extends Controller
             
             // Check if the leave request belongs to user's department
             if ($leaveRequest->user->department_id !== $user->department_id) {
-                \Log::error('Department mismatch:', [
+                Log::error('Department mismatch:', [
                     'leave_user_department' => $leaveRequest->user->department_id,
                     'current_user_department' => $user->department_id
                 ]);
@@ -210,7 +211,7 @@ class DashboardController extends Controller
 
             // Check if already processed
             if ($leaveRequest->status !== 'pending') {
-                \Log::warning('Leave already processed:', [
+                Log::warning('Leave already processed:', [
                     'current_status' => $leaveRequest->status
                 ]);
                 return response()->json([
@@ -220,21 +221,21 @@ class DashboardController extends Controller
             }
 
             // Validate rejection reason
-            \Log::info('Validating rejection reason');
+            Log::info('Validating rejection reason');
             
             // For JSON requests, we need to validate differently
             $reason = $request->input('reason');
             if (empty($reason) || strlen(trim($reason)) < 5) {
-                \Log::error('Invalid rejection reason:', ['reason' => $reason]);
+                Log::error('Invalid rejection reason:', ['reason' => $reason]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Rejection reason is required and must be at least 5 characters long.'
                 ], 422);
             }
 
-            \Log::info('Validation passed, reason: ' . $reason);
+            Log::info('Validation passed, reason: ' . $reason);
 
-            \Log::info('Attempting to update leave request to rejected status');
+            Log::info('Attempting to update leave request to rejected status');
             
             // Update the leave request
             $updateData = [
@@ -244,23 +245,23 @@ class DashboardController extends Controller
                 'head_remarks' => $reason
             ];
             
-            \Log::info('Update data:', $updateData);
+            Log::info('Update data:', $updateData);
             
             $result = $leaveRequest->update($updateData);
             
-            \Log::info('Update result: ' . ($result ? 'SUCCESS' : 'FAILED'));
+            Log::info('Update result: ' . ($result ? 'SUCCESS' : 'FAILED'));
             
             if ($result) {
                 $updatedLeave = LeaveRequest::find($id);
-                \Log::info('After update status: ' . $updatedLeave->status);
+                Log::info('After update status: ' . $updatedLeave->status);
                 
-                \Log::info('=== REJECT LEAVE METHOD COMPLETED SUCCESSFULLY ===');
+                Log::info('=== REJECT LEAVE METHOD COMPLETED SUCCESSFULLY ===');
                 return response()->json([
                     'success' => true,
                     'message' => 'Leave request rejected successfully.'
                 ]);
             } else {
-                \Log::error('Update operation returned false');
+                Log::error('Update operation returned false');
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to update leave request.'
@@ -268,8 +269,8 @@ class DashboardController extends Controller
             }
 
         } catch (\Exception $e) {
-            \Log::error('Error in rejectLeave method: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Error in rejectLeave method: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             
             return response()->json([
                 'success' => false,
@@ -401,10 +402,11 @@ class DashboardController extends Controller
     $user = Auth::user();
     $department = $user->department;
     
-    // Get team members in the department
+    // Get team members in the department - FIXED: Use first_name and last_name for sorting
     $teamMembers = User::where('department_id', $department->id)
         ->where('id', '!=', $user->id) // Exclude the department head
-        ->orderBy('name')
+        ->orderBy('first_name') // Order by first_name (database column)
+        ->orderBy('last_name')  // Then by last_name (database column)
         ->paginate(10);
 
     // Add additional data to team members
@@ -426,6 +428,9 @@ class DashboardController extends Controller
         
         // Default leave balance (you can replace this with actual logic)
         $member->leave_balance = 21; // Default annual leave
+        
+        // Create a full_name attribute for display (using the accessor from User model)
+        $member->full_name = $member->name;
         
         return $member;
     });
@@ -459,6 +464,7 @@ class DashboardController extends Controller
         'department', 'teamMembers', 'teamStats', 'upcomingLeaves'
     ));
 }
+
 public function leavePolicies()
 {
     $user = Auth::user();
@@ -542,4 +548,3 @@ private function getLeaveStatusWithWorkflow($leaveRequest)
 }
     
 }
-

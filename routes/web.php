@@ -14,6 +14,7 @@ use App\Http\Controllers\LeaveManagement\LeaveTypeController;
 use App\Http\Controllers\ApprovalWorkflow\ApprovalSummaryController;
 use App\Http\Controllers\CalendarScheduling\CalendarController;
 use App\Http\Controllers\CalendarScheduling\DepartmentCalendarController;
+use App\Http\Controllers\PageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -134,6 +135,10 @@ Route::prefix('admin')->group(function () {
 
       Route::get('/generate-report', [HrAdminLeaveApprovalController::class, 'generateReport'])->name('generate-report');
 });
+
+Route::get('/privacy', [PageController::class, 'privacy'])->name('privacy');
+Route::get('/terms', [PageController::class, 'terms'])->name('terms');
+Route::get('/help', [PageController::class, 'helpCenter'])->name('help');
 
     // User Management Routes (separate from admin)
     Route::prefix('users')->group(function () {

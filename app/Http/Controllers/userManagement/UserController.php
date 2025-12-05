@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Department;
@@ -31,7 +32,7 @@ class UserController extends Controller
                   ->orWhere('last_name', 'LIKE', "%{$search}%")
                   ->orWhere('email', 'LIKE', "%{$search}%")
                   ->orWhere('employee_id', 'LIKE', "%{$search}%")
-                  ->orWhere('position', 'LIKE', "%{$search}%");
+                  ->orWhere('designation', 'LIKE', "%{$search}%"); // Changed from position to designation
             });
         }
         
@@ -47,9 +48,7 @@ class UserController extends Controller
         
         // Role filter
         if ($request->has('role') && $request->input('role') != 'all') {
-            $query->whereHas('role', function($q) use ($request) {
-                $q->where('name', $request->input('role'));
-            });
+            $query->where('role_id', $request->input('role')); // Simplified
         }
         
         // Paginate results
@@ -79,49 +78,15 @@ class UserController extends Controller
      */
     private function getOnLeaveTodayCount()
     {
-        return \App\Models\LeaveRequest::where('status', 'approved')
-            ->whereDate('start_date', '<=', Carbon::today())
-            ->whereDate('end_date', '>=', Carbon::today())
-            ->distinct('user_id')
-            ->count('user_id');
-    }
-
-    /**
-     * Calculate leave balance for a user
-     */
-    // private function calculateLeaveBalance($user)
-    // {
-    //     // Default annual leave days
-    //     $annualLeaveDays = 21;
-        
-    //     // Get approved leave days for current year
-    //     $usedLeaveDays = \App\Models\LeaveRequest::where('user_id', $user->id)
-    //         ->where('status', 'approved')
-    //         ->whereYear('created_at', Carbon::now()->year)
-    //         ->sum('total_days') ?? 0;
-        
-    //     // Calculate remaining leave balance
-    //     $remainingBalance = max(0, $annualLeaveDays - $usedLeaveDays);
-        
-    //     return [
-    //         'used' => $usedLeaveDays,
-    //         'remaining' => $remainingBalance,
-    //         'total' => $annualLeaveDays,
-    //         'percentage' => $annualLeaveDays > 0 ? round(($usedLeaveDays / $annualLeaveDays) * 100) : 0
-    //     ];
-    // }
-
-    /**
-     * Get leave status color based on percentage
-     */
-    private function getLeaveStatusColor($percentage)
-    {
-        if ($percentage < 30) {
-            return 'green';
-        } elseif ($percentage < 70) {
-            return 'yellow';
-        } else {
-            return 'red';
+        try {
+            return LeaveRequest::where('status', 'approved')
+                ->whereDate('start_date', '<=', Carbon::today())
+                ->whereDate('end_date', '>=', Carbon::today())
+                ->distinct('user_id')
+                ->count('user_id');
+        } catch (\Exception $e) {
+            Log::error('Error getting on leave count: ' . $e->getMessage());
+            return 0;
         }
     }
 
@@ -142,7 +107,7 @@ class UserController extends Controller
 
     public function profile()
     {
-        $user = Auth::user();
+        $user = User::findOrFail(Auth::id());
         $user->load(['department', 'role']);
         
         $joinDate = $user->created_at ?? now();
@@ -161,12 +126,6 @@ class UserController extends Controller
             'performance',
             'completedProjects'
         ));
-    }
-
-    // department users
-    public function departments()
-    {
-        return view('modules.user-management.index');
     }
 
     /**
@@ -188,6 +147,9 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        // Log the incoming request data
+        Log::info('Creating new user', $request->all());
+        
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -202,7 +164,7 @@ class UserController extends Controller
             // Employment Information
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
-            'position' => 'required|string|max:255',
+            'designation' => 'required|string|max:255', // Changed from position to designation
             'employment_type' => 'required|in:full_time,part_time,contract,intern',
             'join_date' => 'required|date',
             'supervisor_id' => 'nullable|exists:users,id',
@@ -225,7 +187,7 @@ class UserController extends Controller
                 'gender' => $validated['gender'],
                 'address' => $validated['address'],
                 'emergency_contact' => $validated['emergency_contact'],
-                'position' => $validated['position'],
+                'designation' => $validated['designation'], // Changed from position to designation
                 'employment_type' => $validated['employment_type'],
                 'join_date' => $validated['join_date'],
                 'supervisor_id' => $validated['supervisor_id'],
@@ -247,9 +209,12 @@ class UserController extends Controller
             // Create the user - employee_id will be auto-generated by the model boot method
             $user = User::create($userData);
 
+            Log::info('User created successfully', ['user_id' => $user->id, 'employee_id' => $user->employee_id]);
+
             return redirect()->route('admin.employees')->with('success', 'User created successfully! Employee ID: ' . $user->employee_id);
 
         } catch (\Exception $e) {
+            Log::error('Error creating user: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error creating user: ' . $e->getMessage())->withInput();
         }
     }
@@ -272,7 +237,7 @@ class UserController extends Controller
             'new_password' => 'required|min:8|confirmed',
         ]);
 
-        $user = Auth::user();
+        $user = User::findOrFail(Auth::id());
 
         // Check if current password matches
         if (!Hash::check($request->current_password, $user->password)) {
@@ -333,7 +298,7 @@ class UserController extends Controller
             // Employment Information
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
-            'position' => 'required|string|max:255',
+            'designation' => 'required|string|max:255', // Changed from position to designation
             'employment_type' => 'required|in:full_time,part_time,contract,intern',
             'join_date' => 'required|date',
             'supervisor_id' => 'nullable|exists:users,id',
@@ -355,7 +320,7 @@ class UserController extends Controller
                 'gender' => $validated['gender'],
                 'address' => $validated['address'],
                 'emergency_contact' => $validated['emergency_contact'],
-                'position' => $validated['position'],
+                'designation' => $validated['designation'], // Changed from position to designation
                 'employment_type' => $validated['employment_type'],
                 'join_date' => $validated['join_date'],
                 'supervisor_id' => $validated['supervisor_id'],
@@ -394,9 +359,12 @@ class UserController extends Controller
 
             $user->update($userData);
 
+            Log::info('User updated successfully', ['user_id' => $user->id]);
+
             return redirect()->route('admin.employees')->with('success', 'User updated successfully!');
 
         } catch (\Exception $e) {
+            Log::error('Error updating user: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error updating user: ' . $e->getMessage())->withInput();
         }
     }
@@ -406,10 +374,10 @@ class UserController extends Controller
      */
     public function editProfile()
     {
-        $user = Auth::user();
-        $user->load(['department', 'role', 'supervisor']);
+        $user = User::with(['department', 'role', 'supervisor'])->findOrFail(Auth::id());
+        $departments = Department::all(); // Added for dropdown
         
-        return view('modules.user-management.edit-profile', compact('user'));
+        return view('modules.user-management.edit-profile', compact('user', 'departments'));
     }
 
     /**
@@ -417,7 +385,7 @@ class UserController extends Controller
      */
     public function updateProfile(Request $request)
     {
-        $user = Auth::user();
+        $user = User::findOrFail(Auth::id());
 
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
@@ -428,6 +396,9 @@ class UserController extends Controller
             'gender' => 'nullable|in:male,female,other',
             'address' => 'nullable|string|max:500',
             'emergency_contact' => 'nullable|string|max:20',
+            'designation' => 'nullable|string|max:255', // Added designation
+            'department_id' => 'nullable|exists:departments,id', // Added department
+            'bio' => 'nullable|string|max:1000', // Added bio
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -441,6 +412,9 @@ class UserController extends Controller
                 'gender' => $validated['gender'],
                 'address' => $validated['address'],
                 'emergency_contact' => $validated['emergency_contact'],
+                'designation' => $validated['designation'] ?? $user->designation,
+                'department_id' => $validated['department_id'] ?? $user->department_id,
+                'bio' => $validated['bio'] ?? $user->bio,
             ];
 
             // Handle profile picture upload
@@ -490,6 +464,12 @@ class UserController extends Controller
                 return redirect()->back()->with('error', 'You cannot delete your own account!');
             }
             
+            // Check if user has any leave requests before deleting
+            $hasLeaveRequests = LeaveRequest::where('user_id', $id)->exists();
+            if ($hasLeaveRequests) {
+                return redirect()->back()->with('error', 'Cannot delete user with existing leave requests. Deactivate instead.');
+            }
+            
             // Delete profile picture if exists
             if ($user->profile_picture && Storage::disk('public')->exists($user->profile_picture)) {
                 Storage::disk('public')->delete($user->profile_picture);
@@ -497,9 +477,12 @@ class UserController extends Controller
             
             $user->delete();
             
+            Log::info('User deleted', ['user_id' => $id, 'deleted_by' => Auth::id()]);
+            
             return redirect()->route('admin.employees')->with('success', 'User deleted successfully!');
             
         } catch (\Exception $e) {
+            Log::error('Error deleting user: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error deleting user: ' . $e->getMessage());
         }
     }
@@ -519,6 +502,8 @@ class UserController extends Controller
             $user->status = $validated['status'];
             $user->save();
             
+            Log::info('User status updated', ['user_id' => $id, 'new_status' => $user->status]);
+            
             return response()->json([
                 'success' => true,
                 'message' => 'User status updated successfully!',
@@ -526,6 +511,7 @@ class UserController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            Log::error('Error updating user status: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error updating user status: ' . $e->getMessage()
@@ -536,26 +522,36 @@ class UserController extends Controller
     /**
      * Calculate leave balance for user
      */
-     public function calculateLeaveBalance($user)
+    public function calculateLeaveBalance($user)
     {
-        // Default annual leave days
-        $annualLeaveDays = 21;
-        
-        // Get approved leave days for current year
-        $usedLeaveDays = LeaveRequest::where('user_id', $user->id)
-            ->where('status', 'approved')
-            ->whereYear('created_at', Carbon::now()->year)
-            ->sum('total_days') ?? 0;
-        
-        // Calculate remaining leave balance
-        $remainingBalance = max(0, $annualLeaveDays - $usedLeaveDays);
-        
-        return [
-            'used' => $usedLeaveDays,
-            'remaining' => $remainingBalance,
-            'total' => $annualLeaveDays,
-            'percentage' => $annualLeaveDays > 0 ? round(($usedLeaveDays / $annualLeaveDays) * 100) : 0
-        ];
+        try {
+            // Default annual leave days
+            $annualLeaveDays = 21;
+            
+            // Get approved leave days for current year
+            $usedLeaveDays = LeaveRequest::where('user_id', $user->id)
+                ->where('status', 'approved')
+                ->whereYear('created_at', Carbon::now()->year)
+                ->sum('total_days') ?? 0;
+            
+            // Calculate remaining leave balance
+            $remainingBalance = max(0, $annualLeaveDays - $usedLeaveDays);
+            
+            return [
+                'used' => $usedLeaveDays,
+                'remaining' => $remainingBalance,
+                'total' => $annualLeaveDays,
+                'percentage' => $annualLeaveDays > 0 ? round(($usedLeaveDays / $annualLeaveDays) * 100) : 0
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error calculating leave balance: ' . $e->getMessage());
+            return [
+                'used' => 0,
+                'remaining' => 21,
+                'total' => 21,
+                'percentage' => 0
+            ];
+        }
     }
 
     /**
@@ -563,7 +559,8 @@ class UserController extends Controller
      */
     private function getPerformanceRating($user)
     {
-        // Implement your performance rating logic here
+        // TODO: Implement actual performance rating logic
+        // For now, return a default value
         return 'Excellent';
     }
 
@@ -572,7 +569,8 @@ class UserController extends Controller
      */
     private function getCompletedProjectsCount($user)
     {
-        // Implement your projects logic here
+        // TODO: Implement actual project counting logic
+        // For now, return a default value
         return 12;
     }
 }

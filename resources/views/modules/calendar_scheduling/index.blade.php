@@ -59,20 +59,20 @@
                         <div class="min-h-32 p-2 border-r border-b border-gray-200 calendar-day 
                                     {{ !$day['is_current_month'] ? 'bg-gray-50' : '' }}
                                     {{ $day['is_today'] ? 'today bg-blue-50 border-blue-200' : '' }}
-                                    {{ $day['is_public_holiday'] ? 'bg-red-50' : '' }}">
+                                    {{ $day['is_public_holiday'] && !empty($day['public_holiday']) ? 'bg-red-50' : '' }}">
                             <div class="text-right mb-2">
                                 <span class="inline-block w-6 h-6 text-sm 
                                             {{ !$day['is_current_month'] ? 'text-gray-400' : 'text-gray-600' }}
                                             {{ $day['is_today'] ? 'font-bold text-blue-600' : '' }}
-                                            {{ $day['is_public_holiday'] ? 'font-bold text-red-600' : '' }}">
+                                            {{ $day['is_public_holiday'] && !empty($day['public_holiday']) ? 'font-bold text-red-600' : '' }}">
                                     {{ $day['date']->format('j') }}
                                 </span>
                             </div>
                             
-                            @if($day['is_public_holiday'])
+                            @if($day['is_public_holiday'] && !empty($day['public_holiday']))
                                 <div class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded mb-1 truncate" 
-                                     title="{{ $day['public_holiday']['name'] }}">
-                                    <i class="fas fa-{{ $day['public_holiday']['icon'] }} mr-1"></i>
+                                     title="{{ $day['public_holiday']['name'] ?? 'Holiday' }}">
+                                    <i class="fas fa-{{ $day['public_holiday']['icon'] ?? 'calendar' }} mr-1"></i>
                                     Holiday
                                 </div>
                             @endif
@@ -88,11 +88,12 @@
                                             'Paternity' => ['bg' => 'blue', 'icon' => 'male'],
                                             'Other' => ['bg' => 'gray', 'icon' => 'calendar-alt']
                                         ];
-                                        $color = $colors[$leave->leaveType->name] ?? $colors['Other'];
+                                        $leaveTypeName = $leave->leaveType->name ?? 'Other';
+                                        $color = $colors[$leaveTypeName] ?? $colors['Other'];
                                         $initials = implode('', array_map(fn($n) => $n[0], explode(' ', $leave->user->name)));
                                     @endphp
                                     <div class="text-xs bg-{{ $color['bg'] }}-100 text-{{ $color['bg'] }}-800 px-2 py-1 rounded truncate calendar-event"
-                                         title="{{ $leave->user->name }} - {{ $leave->leaveType->name }}">
+                                         title="{{ $leave->user->name }} - {{ $leave->leaveType->name ?? 'Leave' }}">
                                         <i class="fas fa-{{ $color['icon'] }} mr-1"></i>
                                         {{ \Illuminate\Support\Str::limit($leave->user->name, 10) }}
                                     </div>
@@ -145,19 +146,19 @@
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">On Leave Today</span>
-                        <span class="font-bold text-blue-600">{{ $monthlyStats['today_leaves'] }}</span>
+                        <span class="font-bold text-blue-600">{{ $monthlyStats['today_leaves'] ?? 0 }}</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">Total This Month</span>
-                        <span class="font-bold text-green-600">{{ $monthlyStats['total_leaves'] }}</span>
+                        <span class="font-bold text-green-600">{{ $monthlyStats['total_leaves'] ?? 0 }}</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">Your Team</span>
-                        <span class="font-bold text-purple-600">{{ $monthlyStats['team_leaves'] }}</span>
+                        <span class="font-bold text-purple-600">{{ $monthlyStats['team_leaves'] ?? 0 }}</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">Public Holidays</span>
-                        <span class="font-bold text-red-600">{{ $monthlyStats['public_holidays'] }}</span>
+                        <span class="font-bold text-red-600">{{ $monthlyStats['public_holidays'] ?? 0 }}</span>
                     </div>
                 </div>
             </div>
@@ -181,7 +182,8 @@
                                 'Paternity' => 'blue',
                                 'Other' => 'gray'
                             ];
-                            $color = $colors[$leave->leaveType->name] ?? 'gray';
+                            $leaveTypeName = $leave->leaveType->name ?? 'Other';
+                            $color = $colors[$leaveTypeName] ?? 'gray';
                             $initials = implode('', array_map(fn($n) => $n[0], explode(' ', $leave->user->name)));
                         @endphp
                         <div class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
@@ -191,7 +193,7 @@
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-800 truncate">{{ $leave->user->name }}</p>
                                 <p class="text-xs text-gray-500">
-                                    {{ $leave->start_date->format('M d') }}-{{ $leave->end_date->format('d') }} • {{ $leave->leaveType->name }}
+                                    {{ $leave->start_date->format('M d') }}-{{ $leave->end_date->format('d') }} • {{ $leave->leaveType->name ?? 'Leave' }}
                                 </p>
                             </div>
                         </div>
@@ -205,15 +207,20 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Public Holidays</h3>
                 <div class="space-y-3">
-                    @foreach($publicHolidays->where('date', '>=', today())->take(3) as $holiday)
+                    @php
+                        $upcomingHolidays = $publicHolidays->where('date', '>=', today())->take(3) ?? collect();
+                    @endphp
+                    @forelse($upcomingHolidays as $holiday)
                         <div class="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
                             <div>
-                                <p class="text-sm font-medium text-red-800">{{ $holiday['name'] }}</p>
-                                <p class="text-xs text-red-600">{{ $holiday['date']->format('F j') }}</p>
+                                <p class="text-sm font-medium text-red-800">{{ $holiday['name'] ?? 'Holiday' }}</p>
+                                <p class="text-xs text-red-600">{{ $holiday['date']->format('F j') ?? '' }}</p>
                             </div>
-                            <i class="fas fa-{{ $holiday['icon'] }} text-red-500"></i>
+                            <i class="fas fa-{{ $holiday['icon'] ?? 'calendar' }} text-red-500"></i>
                         </div>
-                    @endforeach
+                    @empty
+                        <p class="text-sm text-gray-500 text-center py-4">No upcoming public holidays</p>
+                    @endforelse
                 </div>
             </div>
 
