@@ -342,14 +342,14 @@
                                     </a>
                                     
                                     @if($request->status == 'pending')
-                                        <form action="{{ route('admin.approve', $request->id) }}" method="POST" class="inline">
+                                        <form action="{{ route('leaves.approve', $request->id) }}" method="POST" class="inline">
                                             @csrf
                                             <button type="submit" class="text-green-600 hover:text-green-900 text-sm font-medium flex items-center ml-2">
                                                 <i class="fas fa-check mr-1"></i> Approve
                                             </button>
                                         </form>
                                         
-                                        <form action="{{ route('admin.reject', $request->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to reject this leave request?')">
+                                        <form action="{{ route('leaves.reject', $request->id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to reject this leave request?')">
                                             @csrf
                                             <div class="hidden">
                                                 <input type="text" name="rejection_reason" value="Rejected by HR Admin" required>

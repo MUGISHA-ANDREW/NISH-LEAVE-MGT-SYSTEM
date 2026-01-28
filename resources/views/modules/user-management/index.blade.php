@@ -262,7 +262,9 @@
                                     <span class="text-sm text-gray-900">{{ $user->department->name ?? 'No Department' }}</span>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $user->position ?? 'Not specified' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+    {{ $user->role ? ucfirst(str_replace('_', ' ', $user->role->name)) : 'No Role' }}
+</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-3 py-1 bg-{{ $statusColor }}-100 text-{{ $statusColor }}-800 text-xs rounded-full font-medium">
                                     {{ $statusText }}

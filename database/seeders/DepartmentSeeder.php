@@ -11,6 +11,7 @@ class DepartmentSeeder extends Seeder
     {
         DB::table('departments')->insert([
             ['name' => 'Human Resources', 'head_id' => null],
+            ['name' => 'Assemby', 'head_id' => null],
             ['name' => 'Finance', 'head_id' => null],
             ['name' => 'IT', 'head_id' => null],
         ]);

@@ -115,7 +115,9 @@ Route::prefix('admin')->group(function () {
      Route::get('/leave-history', [HrAdminLeaveApprovalController::class, 'history'])->name('admin.leaves.history');
     
     Route::get('/leaves/pending', [HrAdminLeaveApprovalController::class, 'pending'])->name('leaves.pending');
-    
+    // In your admin routes group (inside prefix('admin'))
+Route::post('/leaves/{id}/approve', [HrAdminLeaveApprovalController::class, 'approve'])->name('admin.approve');
+Route::post('/leaves/{id}/reject', [HrAdminLeaveApprovalController::class, 'reject'])->name('admin.reject');
     // Actions
     Route::post('/leaves/{id}/approve', [HrAdminLeaveApprovalController::class, 'approve'])->name('leaves.approve');
     Route::post('/leaves/{id}/reject', [HrAdminLeaveApprovalController::class, 'reject'])->name('leaves.reject');
