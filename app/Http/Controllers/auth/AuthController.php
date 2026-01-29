@@ -58,7 +58,7 @@ class AuthController extends Controller
         switch ($roleId) {
             case 1: // Admin
                 return redirect()->route('admin.dashboard');
-            case 2: // Department Head - use the correct route name
+            case 2: // Department Head
                 return redirect()->route('head.dashboard');
             case 3: // Employee
                 return redirect()->route('employee.dashboard');
