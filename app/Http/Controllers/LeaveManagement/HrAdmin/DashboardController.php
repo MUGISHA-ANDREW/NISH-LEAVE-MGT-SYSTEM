@@ -4,12 +4,12 @@ namespace App\Http\Controllers\LeaveManagement\HrAdmin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Department;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -28,7 +28,7 @@ class DashboardController extends Controller
         $onLeaveToday = LeaveRequest::where('status', 'approved')
             ->whereDate('start_date', '<=', Carbon::today())
             ->whereDate('end_date', '>=', Carbon::today())
-            ->distinct('user_id')
+            ->distinct()
             ->count('user_id');
         
         // Get leave utilization (approximate calculation)
@@ -264,7 +264,7 @@ class DashboardController extends Controller
             $onLeaveToday = LeaveRequest::where('status', 'approved')
                 ->whereDate('start_date', '<=', Carbon::today())
                 ->whereDate('end_date', '>=', Carbon::today())
-                ->distinct('user_id')
+                ->distinct()
                 ->count('user_id');
             
             // Get leave utilization
