@@ -14,6 +14,7 @@
                 <i class="fas fa-envelope text-gray-400"></i>
             </div>
             <input type="email" id="email" name="email" value="{{ old('email') }}" required 
+                   autocomplete="username"
                    class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none transition duration-200"
                    placeholder="Enter your email">
         </div>
@@ -26,6 +27,7 @@
                 <i class="fas fa-lock text-gray-400"></i>
             </div>
             <input type="password" id="password" name="password" required 
+                   autocomplete="current-password"
                    class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none transition duration-200"
                    placeholder="Enter your password">
         </div>
