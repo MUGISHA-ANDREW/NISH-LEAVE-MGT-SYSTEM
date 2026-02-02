@@ -117,7 +117,7 @@ class LeaveApprovalController extends Controller
             return $request->user->department_id ?? 0;
         });
 
-        return view('modules.leave-management.hr_admin.pending', compact(
+        return view('modules.Leave-management.hr_admin.pending', compact(
             'pendingRequests',
             'departmentGroups',
             'departments',
@@ -130,7 +130,7 @@ class LeaveApprovalController extends Controller
         Log::error('Error in LeaveApprovalController@pending: ' . $e->getMessage());
         Log::error($e->getTraceAsString());
 
-        return view('modules.leave-management.hr_admin.pending', [
+        return view('modules.Leave-management.hr_admin.pending', [
             'pendingRequests' => collect(),
             'departmentGroups' => collect(),
             'departments' => Department::orderBy('name')->get(),
@@ -438,7 +438,7 @@ class LeaveApprovalController extends Controller
                 ->count(),
         ];
         
-        return view('modules.leave-management.hr_admin.history', compact(
+        return view('modules.Leave-management.hr_admin.history', compact(
             'leaveRequests',
             'departments',
             'leaveTypes',
@@ -451,7 +451,7 @@ class LeaveApprovalController extends Controller
         Log::error($e->getTraceAsString());
         
         // Return empty paginator on error
-        return view('modules.leave-management.hr_admin.history', [
+        return view('modules.Leave-management.hr_admin.history', [
             'leaveRequests' => \Illuminate\Pagination\LengthAwarePaginator::make([], 0, 20),
             'departments' => collect(),
             'leaveTypes' => collect(),
@@ -490,7 +490,7 @@ class LeaveApprovalController extends Controller
                 'cancelled' => 'gray'
             ];
             
-            return view('modules.leave-management.hr_admin.leave-details', compact('leaveRequest', 'statusColors'));
+            return view('modules.Leave-management.hr_admin.leave-details', compact('leaveRequest', 'statusColors'));
             
         } catch (\Exception $e) {
             return redirect()->route('admin.leaves.history')

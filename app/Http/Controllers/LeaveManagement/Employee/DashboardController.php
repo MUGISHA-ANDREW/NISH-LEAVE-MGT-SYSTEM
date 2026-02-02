@@ -37,7 +37,7 @@ class DashboardController extends Controller
         $leave->workflow_status = $this->getLeaveStatusWithWorkflow($leave);
     });
 
-    return view('modules.leave-management.employee.dashboard', compact(
+    return view('modules.Leave-management.employee.dashboard', compact(
         'leaveBalances',
         'quickStats',
         'upcomingLeaves',
@@ -174,7 +174,7 @@ class DashboardController extends Controller
         // Calculate projections
         $projections = $this->calculateProjections($user->id, $currentYear, $leaveTypes);
 
-        return view('modules.leave-management.employee.leave-balance', compact(
+        return view('modules.Leave-management.employee.leave-balance', compact(
             'leaveBalances',
             'totalUsed',
             'totalAvailable',

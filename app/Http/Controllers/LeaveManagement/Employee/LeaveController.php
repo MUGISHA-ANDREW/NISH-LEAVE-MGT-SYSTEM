@@ -49,7 +49,7 @@ class LeaveController extends Controller
 
         $leaveTypes = LeaveType::all();
 
-        return view('modules.leave-management.employee.index', compact('leaveRequests', 'summary', 'leaveTypes'));
+        return view('modules.Leave-management.employee.index', compact('leaveRequests', 'summary', 'leaveTypes'));
     }
 
     /**
@@ -71,7 +71,7 @@ class LeaveController extends Controller
             $balances[$type->id] = $type->max_days ? ($type->max_days - $usedDays) : null;
         }
 
-        return view('modules.leave-management.employee.create', compact('leaveTypes', 'balances'));
+        return view('modules.Leave-management.employee.create', compact('leaveTypes', 'balances'));
     }
 
     /**
@@ -228,7 +228,7 @@ public function edit($id)
         $balances[$type->id] = $type->max_days ? ($type->max_days - $usedDays) : null;
     }
 
-    return view('modules.leave-management.employee.edit', compact('leaveRequest', 'leaveTypes', 'balances'));
+    return view('modules.Leave-management.employee.edit', compact('leaveRequest', 'leaveTypes', 'balances'));
 }
 
 /**
@@ -240,7 +240,7 @@ public function show($id)
         ->where('user_id', Auth::id())
         ->findOrFail($id);
 
-    return view('modules.leave-management.employee.show', compact('leaveRequest'));
+    return view('modules.Leave-management.employee.show', compact('leaveRequest'));
 }
 
 /**

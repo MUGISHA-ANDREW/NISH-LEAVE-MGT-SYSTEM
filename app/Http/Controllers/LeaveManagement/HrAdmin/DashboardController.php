@@ -46,7 +46,7 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        return view('modules.leave-management.hr_admin.dashboard', [
+        return view('modules.Leave-management.hr_admin.dashboard', [
             'stats' => [
                 'total_employees' => $totalEmployees,
                 'pending_approvals' => $pendingApprovals,

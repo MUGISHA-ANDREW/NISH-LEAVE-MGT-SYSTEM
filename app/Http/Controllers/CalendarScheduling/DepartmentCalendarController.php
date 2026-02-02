@@ -91,7 +91,7 @@ class DepartmentCalendarController extends Controller
             ];
         }
 
-        return view('modules.leave-management.department_head.team-calendar', compact(
+        return view('modules.Leave-management.department_head.team-calendar', compact(
             'department', 'stats', 'upcomingLeaves', 'monthlySummary'
         ));
     }

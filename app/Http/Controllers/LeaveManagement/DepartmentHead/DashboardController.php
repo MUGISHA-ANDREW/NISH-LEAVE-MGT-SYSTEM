@@ -44,7 +44,7 @@ class DashboardController extends Controller
         $teamLeaveOverview = [];
         $upcomingTeamLeaves = [];
 
-        return view('modules.leave-management.department_head.dashboard', compact(
+        return view('modules.Leave-management.department_head.dashboard', compact(
             'department', 'teamStats', 'pendingApprovals', 'teamLeaveOverview', 'upcomingTeamLeaves'
         ));
     }
@@ -392,7 +392,7 @@ class DashboardController extends Controller
         ]
     ];
 
-    return view('modules.leave-management.department_head.reports', compact(
+    return view('modules.Leave-management.department_head.reports', compact(
         'department', 'reportData', 'teamStats', 'detailedReport'
     ));
 }
@@ -460,7 +460,7 @@ class DashboardController extends Controller
         ->take(5)
         ->get();
 
-    return view('modules.leave-management.department_head.team-members', compact(
+    return view('modules.Leave-management.department_head.team-members', compact(
         'department', 'teamMembers', 'teamStats', 'upcomingLeaves'
     ));
 }
@@ -491,7 +491,7 @@ public function leavePolicies()
         ->count(),
     ];
 
-    return view('modules.leave-management.department_head.leave-policies', compact(
+    return view('modules.Leave-management.department_head.leave-policies', compact(
         'department', 'leaveTypes', 'teamStats'
     ));
 }

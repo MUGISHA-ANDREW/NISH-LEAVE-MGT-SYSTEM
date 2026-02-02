@@ -55,7 +55,7 @@ class LeaveApprovalController extends Controller
         ->orderBy('created_at', 'desc')
         ->paginate(15);
 
-    return view('modules.leave-management.department_head.history', compact('leaveHistory', 'department'));
+    return view('modules.Leave-management.department_head.history', compact('leaveHistory', 'department'));
 }
 
     /**
@@ -290,7 +290,7 @@ class LeaveApprovalController extends Controller
                 return redirect()->back()->with('error', 'Access denied.');
             }
 
-            return view('modules.leave-management.department_head.leave-details', compact('leaveRequest'));
+            return view('modules.Leave-management.department_head.leave-details', compact('leaveRequest'));
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Leave request not found.');
         }
