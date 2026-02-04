@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\auth\AuthController;
-use App\Http\Controllers\UserManagement\UserController;
-use App\Http\Controllers\UserManagement\RoleController;
+use App\Http\Controllers\userManagement\UserController;
+use App\Http\Controllers\userManagement\RoleController;
 use App\Http\Controllers\LeaveManagement\Employee\DashboardController as EmployeeDashboardController;
 use App\Http\Controllers\LeaveManagement\Employee\LeaveController as EmployeeLeaveController;
 use App\Http\Controllers\LeaveManagement\DepartmentHead\DashboardController as DeptHeadDashboardController;

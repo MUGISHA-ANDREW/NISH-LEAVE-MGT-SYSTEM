@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\UserManagement;
+namespace App\Http\Controllers\userManagement;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -572,5 +572,50 @@ class UserController extends Controller
         // TODO: Implement actual project counting logic
         // For now, return a default value
         return 12;
+    }
+
+    /**
+     * Display departments page
+     */
+    public function departments()
+    {
+        $departments = Department::with(['manager', 'users'])->get();
+        return view('modules.user-management.departments', compact('departments'));
+    }
+
+    /**
+     * Bulk status update for employees
+     */
+    public function bulkStatusUpdate(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'user_ids' => 'required|array',
+                'user_ids.*' => 'exists:users,id',
+                'status' => 'required|in:active,inactive,suspended'
+            ]);
+
+            User::whereIn('id', $validated['user_ids'])->update([
+                'status' => $validated['status']
+            ]);
+
+            Log::info('Bulk status update', [
+                'user_ids' => $validated['user_ids'], 
+                'status' => $validated['status'],
+                'updated_by' => Auth::id()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status updated successfully for selected employees!'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error in bulk status update: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating status: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -191,4 +191,86 @@ class DashboardController extends Controller
             'cancelled' => 'gray',
         ][$status] ?? 'gray';
     }
+
+    /**
+     * Get dashboard statistics (AJAX endpoint)
+     */
+    public function getDashboardStats()
+    {
+        $today = Carbon::today();
+        $currentYear = Carbon::now()->year;
+
+        return response()->json([
+            'total_employees' => User::count(),
+            'pending_approvals' => LeaveRequest::where('status', 'pending')->count(),
+            'on_leave_today' => LeaveRequest::where('status', 'approved')
+                ->whereDate('start_date', '<=', $today)
+                ->whereDate('end_date', '>=', $today)
+                ->distinct('user_id')
+                ->count('user_id'),
+            'leave_utilization' => $this->getLeaveUtilizationPercentage(),
+        ]);
+    }
+
+    /**
+     * Get recent leave requests (AJAX endpoint)
+     */
+    public function getRecentLeaveRequests()
+    {
+        $recentLeaveRequests = LeaveRequest::with(['user.department', 'leaveType'])
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        return response()->json($recentLeaveRequests);
+    }
+
+    /**
+     * Get chart data for dashboard (AJAX endpoint)
+     */
+    public function getChartData()
+    {
+        return response()->json([
+            'leave_statistics' => $this->getLeaveStatistics(),
+            'department_distribution' => $this->getDepartmentDistribution(),
+            'monthly_trend' => $this->getMonthlyTrend(),
+        ]);
+    }
+
+    /**
+     * Reports page
+     */
+    public function reports()
+    {
+        return view('modules.Leave-management.hr_admin.reports');
+    }
+
+    /**
+     * Settings page
+     */
+    public function settings()
+    {
+        $leaveTypes = LeaveType::all();
+        $departments = Department::with('manager')->get();
+        
+        return view('modules.Leave-management.hr_admin.settings', compact('leaveTypes', 'departments'));
+    }
+
+    /**
+     * Calculate leave utilization percentage
+     */
+    private function getLeaveUtilizationPercentage()
+    {
+        $currentYear = Carbon::now()->year;
+        $totalEmployees = User::count();
+        $totalLeaveDaysApproved = LeaveRequest::where('status', 'approved')
+            ->whereYear('created_at', $currentYear)
+            ->sum('total_days');
+        
+        $totalAnnualLeaveDays = $totalEmployees * 21;
+
+        return $totalAnnualLeaveDays > 0
+            ? round(($totalLeaveDaysApproved / $totalAnnualLeaveDays) * 100)
+            : 0;
+    }
 }
