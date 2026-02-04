@@ -26,23 +26,6 @@
 </div>
 @endif
 
-@if($recentLeaves->count() === 0 && empty($monthlyData))
-<div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg mb-6">
-    <p class="font-medium">No data available for the selected period.</p>
-    <p class="text-sm mt-1">Try selecting a different date range or check if there are any leave requests in your system.</p>
-    
-    <!-- Quick actions -->
-    <div class="mt-3 flex space-x-3">
-        <a href="{{ route('admin.leaves.history') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-            <i class="fas fa-history mr-1"></i> View Leave History
-        </a>
-        <a href="{{ route('employee.dashboard') }}" target="_blank" class="text-green-600 hover:text-green-800 text-sm font-medium">
-            <i class="fas fa-user-plus mr-1"></i> Create Test Leave Request
-        </a>
-    </div>
-</div>
-@endif
-
 @section('content')
 <!-- Report Filters -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
