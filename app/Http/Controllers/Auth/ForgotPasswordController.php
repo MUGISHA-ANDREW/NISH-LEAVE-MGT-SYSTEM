@@ -47,18 +47,27 @@ class ForgotPasswordController extends Controller
             // Send the reset link via email
             $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
             
-            // Try to send email with timeout protection
+            // Send email with proper error handling
             try {
                 Mail::send('emails.password-reset', ['link' => $resetLink], function($message) use ($request) {
                     $message->to($request->email);
-                    $message->subject('Password Reset Request');
+                    $message->subject('Password Reset Request - Nish Auto Limited');
                 });
+                
+                // Check if email was queued or sent successfully
+                if (count(Mail::failures()) > 0) {
+                    throw new \Exception('Failed to send email to: ' . $request->email);
+                }
+                
+                Log::info('Password reset email sent successfully to: ' . $request->email);
                 $successMessage = 'We have emailed your password reset link! Please check your inbox and spam folder.';
             } catch (\Exception $emailError) {
-                // Email sending failed, but token is still valid
-                Log::error('Email sending failed: ' . $emailError->getMessage());
-                Log::info('Password reset token created but email not sent: ' . $resetLink);
-                $successMessage = 'Password reset link created. Please contact your administrator or use this link: ' . $resetLink;
+                // Email sending failed, log for admin but don't expose details to user
+                Log::error('Password reset email failed for: ' . $request->email);
+                Log::error('Error: ' . $emailError->getMessage());
+                Log::info('Reset link (for admin): ' . $resetLink);
+                
+                $successMessage = 'We have sent a password reset request. If you don\'t receive an email within a few minutes, please contact your administrator.';
             }
 
             return back()->with('success', $successMessage);
