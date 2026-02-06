@@ -47,18 +47,27 @@ class ForgotPasswordController extends Controller
             // Send the reset link via email
             $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
             
-            Mail::send('emails.password-reset', ['link' => $resetLink], function($message) use ($request) {
-                $message->to($request->email);
-                $message->subject('Password Reset Request');
-            });
+            // Try to send email with timeout protection
+            try {
+                Mail::send('emails.password-reset', ['link' => $resetLink], function($message) use ($request) {
+                    $message->to($request->email);
+                    $message->subject('Password Reset Request');
+                });
+                $successMessage = 'We have emailed your password reset link! Please check your inbox and spam folder.';
+            } catch (\Exception $emailError) {
+                // Email sending failed, but token is still valid
+                Log::error('Email sending failed: ' . $emailError->getMessage());
+                Log::info('Password reset token created but email not sent: ' . $resetLink);
+                $successMessage = 'Password reset link created. Please contact your administrator or use this link: ' . $resetLink;
+            }
 
-            return back()->with('success', 'We have emailed your password reset link! Please check your inbox and spam folder.');
+            return back()->with('success', $successMessage);
         } catch (\Exception $e) {
             // Log the error for debugging
             Log::error('Password reset error: ' . $e->getMessage());
             Log::error('Stack trace: ' . $e->getTraceAsString());
             
-            return back()->withErrors(['email' => 'Failed to process password reset. Error: ' . $e->getMessage()]);
+            return back()->withErrors(['email' => 'Failed to process password reset. Please try again later.']);
         }
     }
 
