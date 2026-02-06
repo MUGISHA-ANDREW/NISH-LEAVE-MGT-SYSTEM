@@ -171,15 +171,15 @@
                         </div>
                         
                         <!-- Position/Designation -->
-                        {{-- <div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Position <span class="text-red-500">*</span>
+                                Position/Designation <span class="text-red-500">*</span>
                             </label>
-                            <input type="text" name="designation" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" placeholder="Enter job position" value="{{ old('designation') }}" required>
+                            <input type="text" name="designation" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" placeholder="e.g., Accountant, Sales Manager" value="{{ old('designation') }}" required>
                             @error('designation')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
-                        </div> --}}
+                        </div>
                         
                         <!-- Role -->
                         <div>
