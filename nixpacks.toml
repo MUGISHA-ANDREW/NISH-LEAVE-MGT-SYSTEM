@@ -6,11 +6,13 @@ cmds = ['composer install --no-dev --optimize-autoloader']
 
 [phases.build]
 cmds = [
+    'rm -rf bootstrap/cache/*.php || true',
     'php artisan config:clear',
     'php artisan cache:clear',
     'php artisan route:clear',
     'php artisan view:clear',
-    'composer dump-autoload --optimize --no-dev',
+    'php artisan event:clear',
+    'composer dump-autoload --optimize --no-dev --classmap-authoritative',
     'php artisan migrate --force',
     'php artisan config:cache',
     'php artisan route:cache',
