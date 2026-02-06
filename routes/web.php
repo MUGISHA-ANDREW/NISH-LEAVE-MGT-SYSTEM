@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\auth\AuthController;
+use App\Http\Controllers\auth\ForgotPasswordController;
 use App\Http\Controllers\userManagement\UserController;
 use App\Http\Controllers\userManagement\RoleController;
 use App\Http\Controllers\LeaveManagement\Employee\DashboardController as EmployeeDashboardController;
@@ -31,6 +32,12 @@ use App\Http\Controllers\PageController;
 Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Password Reset Routes
+Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotPasswordForm'])->name('password.request');
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink'])->name('password.email');
+Route::get('/reset-password/{token}', [ForgotPasswordController::class, 'showResetPasswordForm'])->name('password.reset');
+Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('password.update.reset');
 
 // Dashboard routes (protected)
 Route::middleware('auth')->group(function () {
