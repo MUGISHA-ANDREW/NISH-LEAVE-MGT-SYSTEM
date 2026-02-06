@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use App\Models\User;
@@ -30,30 +31,34 @@ class ForgotPasswordController extends Controller
             'email' => 'required|email|exists:users,email',
         ]);
 
-        // Generate a unique token
-        $token = Str::random(64);
-
-        // Store the token in the password_resets table
-        DB::table('password_resets')->updateOrInsert(
-            ['email' => $request->email],
-            [
-                'token' => Hash::make($token),
-                'created_at' => Carbon::now()
-            ]
-        );
-
-        // Send the reset link via email
-        $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
-        
         try {
+            // Generate a unique token
+            $token = Str::random(64);
+
+            // Store the token in the password_resets table
+            DB::table('password_resets')->updateOrInsert(
+                ['email' => $request->email],
+                [
+                    'token' => Hash::make($token),
+                    'created_at' => Carbon::now()
+                ]
+            );
+
+            // Send the reset link via email
+            $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
+            
             Mail::send('emails.password-reset', ['link' => $resetLink], function($message) use ($request) {
                 $message->to($request->email);
                 $message->subject('Password Reset Request');
             });
 
-            return back()->with('success', 'We have emailed your password reset link!');
+            return back()->with('success', 'We have emailed your password reset link! Please check your inbox and spam folder.');
         } catch (\Exception $e) {
-            return back()->withErrors(['email' => 'Failed to send reset email. Please try again later.']);
+            // Log the error for debugging
+            Log::error('Password reset error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return back()->withErrors(['email' => 'Failed to process password reset. Error: ' . $e->getMessage()]);
         }
     }
 
