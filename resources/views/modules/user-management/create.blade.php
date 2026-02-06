@@ -171,7 +171,7 @@
                         </div>
                         
                         <!-- Position/Designation -->
-                        <div>
+                        {{-- <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Position <span class="text-red-500">*</span>
                             </label>
@@ -179,7 +179,7 @@
                             @error('designation')
                                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                             @enderror
-                        </div>
+                        </div> --}}
                         
                         <!-- Role -->
                         <div>
@@ -294,7 +294,7 @@
             <!-- Right Column - Actions & Additional Info -->
             <div class="space-y-6">
                 <!-- Profile Picture Card -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                {{-- <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Profile Picture</h3>
                     
                     <div class="flex flex-col items-center space-y-4">
@@ -314,7 +314,7 @@
                             @enderror
                         </div>
                     </div>
-                </div>
+                </div> --}}
 
                 <!-- Actions Card -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
