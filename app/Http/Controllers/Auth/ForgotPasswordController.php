@@ -28,10 +28,18 @@ class ForgotPasswordController extends Controller
     public function sendResetLink(Request $request)
     {
         $request->validate([
-            'email' => 'required|email|exists:users,email',
+            'email' => 'required|email',
         ]);
 
         try {
+            // Check if user exists
+            $user = User::where('email', $request->email)->first();
+            
+            if (!$user) {
+                // Don't reveal if email exists or not (security best practice)
+                return back()->with('success', 'If that email exists in our system, we have sent a password reset link.');
+            }
+            
             // Generate a unique token
             $token = Str::random(64);
 
@@ -46,6 +54,14 @@ class ForgotPasswordController extends Controller
 
             // Send the reset link via email
             $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
+            
+            // Log for debugging
+            Log::info('Attempting to send password reset email');
+            Log::info('Mail Config - Mailer: ' . config('mail.default'));
+            Log::info('Mail Config - Host: ' . config('mail.mailers.smtp.host'));
+            Log::info('Mail Config - Port: ' . config('mail.mailers.smtp.port'));
+            Log::info('Mail Config - Encryption: ' . config('mail.mailers.smtp.encryption'));
+            Log::info('Mail Config - From: ' . config('mail.from.address'));
             
             // Send email with proper error handling
             try {
@@ -65,9 +81,11 @@ class ForgotPasswordController extends Controller
                 // Email sending failed, log for admin but don't expose details to user
                 Log::error('Password reset email failed for: ' . $request->email);
                 Log::error('Error: ' . $emailError->getMessage());
+                Log::error('Error trace: ' . $emailError->getTraceAsString());
                 Log::info('Reset link (for admin): ' . $resetLink);
                 
-                $successMessage = 'We have sent a password reset request. If you don\'t receive an email within a few minutes, please contact your administrator.';
+                // Return error to user for debugging
+                return back()->withErrors(['email' => 'Failed to send email. Error: ' . $emailError->getMessage()]);
             }
 
             return back()->with('success', $successMessage);
