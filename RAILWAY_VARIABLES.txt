@@ -40,6 +40,40 @@ SESSION_HTTP_ONLY=true
 SESSION_SAME_SITE=lax
 ```
 
+## Mail Configuration (REQUIRED TO FIX 500 ERROR)
+
+```
+MAIL_MAILER=smtp
+```
+
+```
+MAIL_HOST=smtp.gmail.com
+```
+
+```
+MAIL_PORT=587
+```
+
+```
+MAIL_USERNAME=andrewmugisha699@gmail.com
+```
+
+```
+MAIL_PASSWORD=fgjocmethlogxhdl
+```
+
+```
+MAIL_ENCRYPTION=tls
+```
+
+```
+MAIL_FROM_ADDRESS=andrewmugisha699@gmail.com
+```
+
+```
+MAIL_FROM_NAME="Nish Auto Limited"
+```
+
 ---
 
 ## After Adding Variables:

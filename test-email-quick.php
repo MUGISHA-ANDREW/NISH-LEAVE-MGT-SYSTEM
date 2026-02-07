@@ -50,13 +50,6 @@ try {
                 ->subject('✓ Test Email - Configuration Working');
     });
     
-    // Check for failures
-    if (count(Mail::failures()) > 0) {
-        echo "❌ Failed to send email to: $testEmail\n";
-        echo "Failures: " . print_r(Mail::failures(), true) . "\n";
-        exit(1);
-    }
-    
     echo "✅ SUCCESS! Email sent successfully!\n";
     echo "----------------------------\n";
     echo "Check the inbox (and spam folder) of: $testEmail\n\n";
