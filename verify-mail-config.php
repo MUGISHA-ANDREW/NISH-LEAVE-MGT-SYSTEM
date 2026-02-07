@@ -12,6 +12,8 @@ $app = require_once __DIR__.'/bootstrap/app.php';
 $kernel = $app->make('Illuminate\Contracts\Console\Kernel');
 $kernel->bootstrap();
 
+use Illuminate\Support\Facades\DB;
+
 header('Content-Type: text/plain');
 
 echo "==================================================\n";
