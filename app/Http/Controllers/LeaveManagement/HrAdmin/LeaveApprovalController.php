@@ -514,7 +514,7 @@ public function generateReport(Request $request)
         return response()->json([
             'success' => true,
             'message' => 'Report generated successfully',
-            'download_url' => route('generate-report') . '?' . $filters
+            'download_url' => route('download-report') . '?' . $filters
         ]);
         
     } catch (\Exception $e) {
