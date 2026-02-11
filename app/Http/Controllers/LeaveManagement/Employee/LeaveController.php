@@ -7,6 +7,7 @@ use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class LeaveController extends Controller
@@ -79,11 +80,11 @@ class LeaveController extends Controller
      */
 public function store(Request $request)
 {
-    \Log::info('=== LEAVE STORE METHOD CALLED ===');
-    \Log::info('Request Method: ' . $request->method());
-    \Log::info('Request Headers:', $request->headers->all());
-    \Log::info('Form Data:', $request->all());
-    \Log::info('CSRF Token matches: ' . ($request->header('X-CSRF-TOKEN') === csrf_token() ? 'YES' : 'NO'));
+    Log::info('=== LEAVE STORE METHOD CALLED ===');
+    Log::info('Request Method: ' . $request->method());
+    Log::info('Request Headers:', $request->headers->all());
+    Log::info('Form Data:', $request->all());
+    Log::info('CSRF Token matches: ' . ($request->header('X-CSRF-TOKEN') === csrf_token() ? 'YES' : 'NO'));
 
     try {
         // Validate the request
@@ -97,18 +98,18 @@ public function store(Request $request)
             'handover_notes' => 'nullable|string|max:500',
         ]);
 
-        \Log::info('Validation passed successfully');
+        Log::info('Validation passed successfully');
 
         // Calculate working days
         $startDate = Carbon::parse($request->start_date);
         $endDate = Carbon::parse($request->end_date);
         $totalDays = $this->calculateWorkingDays($startDate, $endDate);
 
-        \Log::info("Date range: {$startDate} to {$endDate}");
-        \Log::info("Calculated total days: " . $totalDays);
+        Log::info("Date range: {$startDate} to {$endDate}");
+        Log::info("Calculated total days: " . $totalDays);
 
         if ($totalDays === 0) {
-            \Log::warning('Total days calculated as 0 - only weekends selected');
+            Log::warning('Total days calculated as 0 - only weekends selected');
             return back()->withErrors([
                 'end_date' => 'The selected dates include only weekends. Please select dates that include working days.'
             ])->withInput();
@@ -125,10 +126,10 @@ public function store(Request $request)
         
         $availableDays = $leaveType->max_days ? ($leaveType->max_days - $usedDays) : null;
 
-        \Log::info("Leave type: {$leaveType->name}, Available days: " . ($availableDays ?? 'Unlimited'));
+        Log::info("Leave type: {$leaveType->name}, Available days: " . ($availableDays ?? 'Unlimited'));
 
         if ($availableDays !== null && $totalDays > $availableDays) {
-            \Log::warning("Insufficient leave balance. Available: {$availableDays}, Requested: {$totalDays}");
+            Log::warning("Insufficient leave balance. Available: {$availableDays}, Requested: {$totalDays}");
             return back()->withErrors([
                 'end_date' => "You only have {$availableDays} days remaining for {$leaveType->name}. You requested {$totalDays} days."
             ])->withInput();
@@ -148,20 +149,20 @@ public function store(Request $request)
             'status' => 'pending',
         ];
 
-        \Log::info('Creating leave request with data:', $leaveData);
+        Log::info('Creating leave request with data:', $leaveData);
 
         $leaveRequest = LeaveRequest::create($leaveData);
 
-        \Log::info('Leave request created successfully with ID: ' . $leaveRequest->id);
+        Log::info('Leave request created successfully with ID: ' . $leaveRequest->id);
 
         return redirect()->route('employee.leave.history')->with('success', 'Leave application submitted successfully! It is now pending approval.');
 
     } catch (\Illuminate\Validation\ValidationException $e) {
-        \Log::error('Validation failed: ' . json_encode($e->errors()));
+        Log::error('Validation failed: ' . json_encode($e->errors()));
         throw $e; // Let Laravel handle validation exceptions
     } catch (\Exception $e) {
-        \Log::error('Error creating leave request: ' . $e->getMessage());
-        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        Log::error('Error creating leave request: ' . $e->getMessage());
+        Log::error('Stack trace: ' . $e->getTraceAsString());
         
         return back()->withErrors([
             'error' => 'There was an error submitting your leave application. Please try again. Error: ' . $e->getMessage()
@@ -326,5 +327,90 @@ public function retrieve($id)
 
     return redirect()->route('employee.leave.history')
         ->with('success', 'Leave request retrieved successfully! It is now pending approval.');
+}
+
+/**
+ * Export leave history to Excel (CSV format)
+ */
+public function export(Request $request)
+{
+    $user = Auth::user();
+    
+    // Get filters from request
+    $status = $request->status;
+    $leaveType = $request->leave_type;
+    $monthYear = $request->month_year;
+
+    // Get leave requests with filters (no pagination for export)
+    $leaveRequests = LeaveRequest::with(['leaveType', 'user'])
+        ->where('user_id', $user->id)
+        ->when($status && $status !== 'all', function($query) use ($status) {
+            return $query->where('status', $status);
+        })
+        ->when($leaveType && $leaveType !== 'all', function($query) use ($leaveType) {
+            return $query->where('leave_type_id', $leaveType);
+        })
+        ->when($monthYear, function($query) use ($monthYear) {
+            return $query->whereYear('start_date', substr($monthYear, 0, 4))
+                       ->whereMonth('start_date', substr($monthYear, 5, 2));
+        })
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    // Generate filename with current date
+    $filename = 'my_leave_history_' . date('Y-m-d_His') . '.csv';
+
+    // Set headers for CSV download
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    // Open output stream
+    $output = fopen('php://output', 'w');
+
+    // Add UTF-8 BOM for Excel compatibility
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+    // Add CSV headers
+    fputcsv($output, [
+        'Employee Name',
+        'Leave Type',
+        'Start Date',
+        'End Date',
+        'Total Days',
+        'Reason',
+        'Status',
+        'Applied Date',
+        'Contact Number',
+        'Emergency Contact',
+        'Handover Notes',
+        'Reviewed By',
+        'Review Date',
+        'Review Comments'
+    ]);
+
+    // Add data rows
+    foreach ($leaveRequests as $leave) {
+        fputcsv($output, [
+            $leave->user->name ?? 'N/A',
+            $leave->leaveType->name ?? 'N/A',
+            $leave->start_date ? Carbon::parse($leave->start_date)->format('M d, Y') : 'N/A',
+            $leave->end_date ? Carbon::parse($leave->end_date)->format('M d, Y') : 'N/A',
+            $leave->total_days ?? 0,
+            $leave->reason ?? '',
+            ucfirst($leave->status ?? 'pending'),
+            $leave->created_at ? Carbon::parse($leave->created_at)->format('M d, Y h:i A') : 'N/A',
+            $leave->contact_number ?? '',
+            $leave->emergency_contact ?? '',
+            $leave->handover_notes ?? '',
+            $leave->reviewed_by ?? '',
+            $leave->reviewed_at ? Carbon::parse($leave->reviewed_at)->format('M d, Y h:i A') : '',
+            $leave->reviewer_comments ?? ''
+        ]);
+    }
+
+    fclose($output);
+    exit();
 }
 }

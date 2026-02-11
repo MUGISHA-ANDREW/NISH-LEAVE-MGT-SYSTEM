@@ -71,7 +71,7 @@
                 <a href="{{ route('employee.leave.history') }}" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition duration-200 font-medium">
                     <i class="fas fa-refresh mr-2"></i>Reset
                 </a>
-                <button type="button" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-medium">
+                <button type="button" onclick="exportLeaveHistory()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-medium">
                     <i class="fas fa-download mr-2"></i>Export
                 </button>
             </div>
@@ -195,4 +195,22 @@
         });
     </script>
 @endif
+
+<script>
+function exportLeaveHistory() {
+    // Get current filter values
+    const status = document.querySelector('select[name="status"]').value;
+    const leaveType = document.querySelector('select[name="leave_type"]').value;
+    const monthYear = document.querySelector('input[name="month_year"]').value;
+    
+    // Build query string
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (leaveType) params.append('leave_type', leaveType);
+    if (monthYear) params.append('month_year', monthYear);
+    
+    // Redirect to export route
+    window.location.href = '{{ route("employee.leave.export") }}?' + params.toString();
+}
+</script>
 @endsection

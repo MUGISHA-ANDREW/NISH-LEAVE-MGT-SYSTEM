@@ -166,7 +166,7 @@
     <!-- Replace the Generate Report button with this -->
 <a href="{{ route('download-report') }}?{{ http_build_query(request()->all()) }}" 
    class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-200 font-medium flex items-center">
-    <i class="fas fa-chart-bar mr-2"></i>Generate Report
+    <i class="fas fa-file-pdf mr-2"></i>Generate PDF Report
 </a>
 </div>
             </div>

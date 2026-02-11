@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class LeaveApprovalController extends Controller
 {
@@ -452,7 +453,7 @@ class LeaveApprovalController extends Controller
         
         // Return empty paginator on error
         return view('modules.Leave-management.hr_admin.history', [
-            'leaveRequests' => \Illuminate\Pagination\LengthAwarePaginator::make([], 0, 20),
+            'leaveRequests' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20),
             'departments' => collect(),
             'leaveTypes' => collect(),
             'employees' => collect(),
@@ -527,7 +528,7 @@ public function generateReport(Request $request)
 }
 
 /**
- * Download report file (returns CSV)
+ * Download report file (returns PDF format via HTML print)
  */
 public function downloadReport(Request $request)
 {
@@ -536,95 +537,99 @@ public function downloadReport(Request $request)
         $query = LeaveRequest::with(['user', 'user.department', 'leaveType'])
             ->orderBy('created_at', 'desc');
         
+        // Track applied filters
+        $filters = [
+            'department' => $request->input('department', 'all'),
+            'employee' => $request->input('employee', 'all'),
+            'status' => $request->input('status', 'all'),
+            'leave_type' => $request->input('leave_type', 'all'),
+            'month' => $request->input('month', ''),
+        ];
+        
+        $hasFilters = false;
+        
+        // Apply filters
         if ($request->has('department') && $request->input('department') != 'all') {
+            $hasFilters = true;
             $query->whereHas('user', function($q) use ($request) {
                 $q->where('department_id', $request->input('department'));
             });
+            
+            // Get department name for display
+            $dept = Department::find($request->input('department'));
+            $filters['department_name'] = $dept ? $dept->name : 'Selected';
         }
         
         if ($request->has('employee') && $request->input('employee') != 'all') {
+            $hasFilters = true;
             $query->where('user_id', $request->input('employee'));
+            
+            // Get employee name for display
+            $emp = User::find($request->input('employee'));
+            $filters['employee_name'] = $emp ? $emp->first_name . ' ' . $emp->last_name : 'Selected';
         }
         
         if ($request->has('status') && $request->input('status') != 'all') {
+            $hasFilters = true;
             $query->where('status', $request->input('status'));
         }
         
         if ($request->has('month') && $request->input('month')) {
+            $hasFilters = true;
             try {
                 $month = Carbon::createFromFormat('Y-m', $request->input('month'));
                 $query->whereMonth('created_at', $month->month)
                       ->whereYear('created_at', $month->year);
+                $filters['month'] = $month->format('F Y');
             } catch (\Exception $e) {
                 Log::warning('Invalid month format in report: ' . $request->input('month'));
             }
         }
         
         if ($request->has('leave_type') && $request->input('leave_type') != 'all') {
+            $hasFilters = true;
             $query->where('leave_type_id', $request->input('leave_type'));
+            
+            // Get leave type name for display
+            $leaveType = LeaveType::find($request->input('leave_type'));
+            $filters['leave_type_name'] = $leaveType ? $leaveType->name : 'Selected';
         }
         
         $leaveRequests = $query->get();
         
-        // Generate CSV
-        $fileName = 'leave-history-report-' . date('Y-m-d-H-i') . '.csv';
+        // Calculate statistics
+        $stats = [
+            'total' => $leaveRequests->count(),
+            'approved' => $leaveRequests->where('status', 'approved')->count(),
+            'pending' => $leaveRequests->where('status', 'pending')->count(),
+            'rejected' => $leaveRequests->where('status', 'rejected')->count(),
+            'total_days' => $leaveRequests->where('status', 'approved')->sum('total_days'),
+        ];
         
-        return response()->streamDownload(function() use ($leaveRequests) {
-            $file = fopen('php://output', 'w');
-            
-            // Add BOM for UTF-8
-            fwrite($file, "\xEF\xBB\xBF");
-            
-            // Add headers
-            fputcsv($file, [
-                'Employee ID', 
-                'Employee Name', 
-                'Department', 
-                'Leave Type',
-                'Start Date', 
-                'End Date', 
-                'Total Days', 
-                'Reason',
-                'Status', 
-                'Applied Date', 
-                'Processed Date', 
-                'Processing Days'
-            ]);
-
-            // Add rows
-            foreach ($leaveRequests as $request) {
-                $processingDays = 'N/A';
-                if ($request->action_at) {
-                    $processingDays = $request->created_at->diffInDays($request->action_at);
-                }
-                
-                fputcsv($file, [
-                    $request->user->employee_id ?? 'N/A',
-                    ($request->user->first_name ?? 'Unknown') . ' ' . ($request->user->last_name ?? ''),
-                    $request->user->department->name ?? 'N/A',
-                    $request->leaveType->name ?? 'N/A',
-                    $request->start_date ? Carbon::parse($request->start_date)->format('Y-m-d') : 'N/A',
-                    $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : 'N/A',
-                    $request->total_days ?? 0,
-                    $this->cleanCsvValue($request->reason ?? ''),
-                    ucfirst($request->status),
-                    $request->created_at->format('Y-m-d H:i:s'),
-                    $request->action_at ? $request->action_at->format('Y-m-d H:i:s') : 'N/A',
-                    $processingDays
-                ]);
-            }
-
-            fclose($file);
-        }, $fileName, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
-        ]);
+        // Generate PDF
+        $pdf = Pdf::loadView('modules.leave-management.hr_admin.report-pdf', [
+            'leaveRequests' => $leaveRequests,
+            'stats' => $stats,
+            'filters' => $filters,
+            'hasFilters' => $hasFilters,
+        ])
+        ->setPaper('a4', 'landscape')
+        ->setOption('margin-top', 10)
+        ->setOption('margin-bottom', 10)
+        ->setOption('margin-left', 10)
+        ->setOption('margin-right', 10);
+        
+        // Generate filename
+        $filename = 'leave-history-report-' . date('Y-m-d-H-i-s') . '.pdf';
+        
+        // Download PDF
+        return $pdf->download($filename);
 
     } catch (\Exception $e) {
-        Log::error('Error downloading report: ' . $e->getMessage());
+        Log::error('Error generating PDF report: ' . $e->getMessage());
         
         return redirect()->route('admin.leaves.history')
-            ->with('error', 'Error downloading report: ' . $e->getMessage());
+            ->with('error', 'Error generating report: ' . $e->getMessage());
     }
 }
 

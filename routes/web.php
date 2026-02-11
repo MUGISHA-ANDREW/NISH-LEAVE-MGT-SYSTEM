@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/apply-leave', [EmployeeLeaveController::class, 'create'])->name('employee.leave.create');
         Route::post('/apply-leave', [EmployeeLeaveController::class, 'store'])->name('employee.leave.store');
         Route::get('/leave-history', [EmployeeLeaveController::class, 'index'])->name('employee.leave.history');
+        Route::get('/leave-history/export', [EmployeeLeaveController::class, 'export'])->name('employee.leave.export');
         Route::get('/leave/{id}/edit', [EmployeeLeaveController::class, 'edit'])->name('employee.leave.edit');
         Route::get('/leave/{id}', [EmployeeLeaveController::class, 'show'])->name('employee.leave.show');
         Route::put('/leave/{id}', [EmployeeLeaveController::class, 'update'])->name('employee.leave.update');
