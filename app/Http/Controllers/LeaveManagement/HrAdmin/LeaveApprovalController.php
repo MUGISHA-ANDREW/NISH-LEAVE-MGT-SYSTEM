@@ -607,7 +607,7 @@ public function downloadReport(Request $request)
         ];
         
         // Generate PDF
-        $pdf = Pdf::loadView('modules.leave-management.hr_admin.report-pdf', [
+        $pdf = Pdf::loadView('modules.Leave-management.hr_admin.report-pdf', [
             'leaveRequests' => $leaveRequests,
             'stats' => $stats,
             'filters' => $filters,
