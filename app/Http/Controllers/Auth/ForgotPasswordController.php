@@ -27,11 +27,11 @@ class ForgotPasswordController extends Controller
      */
     public function sendResetLink(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
-
         try {
+            $request->validate([
+                'email' => 'required|email',
+            ]);
+
             // Check if user exists
             $user = User::where('email', $request->email)->first();
             
@@ -56,12 +56,14 @@ class ForgotPasswordController extends Controller
             $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
             
             // Log for debugging
-            Log::info('Attempting to send password reset email');
-            Log::info('Mail Config - Mailer: ' . config('mail.default'));
-            Log::info('Mail Config - Host: ' . config('mail.mailers.smtp.host'));
-            Log::info('Mail Config - Port: ' . config('mail.mailers.smtp.port'));
-            Log::info('Mail Config - Encryption: ' . config('mail.mailers.smtp.encryption'));
-            Log::info('Mail Config - From: ' . config('mail.from.address'));
+            Log::info('Attempting to send password reset email', [
+                'email' => $request->email,
+                'mailer' => config('mail.default'),
+                'host' => config('mail.mailers.smtp.host'),
+                'port' => config('mail.mailers.smtp.port'),
+                'encryption' => config('mail.mailers.smtp.encryption'),
+                'from' => config('mail.from.address'),
+            ]);
             
             // Send email with proper error handling
             try {
@@ -79,20 +81,32 @@ class ForgotPasswordController extends Controller
                 $successMessage = 'We have emailed your password reset link! Please check your inbox and spam folder.';
             } catch (\Exception $emailError) {
                 // Email sending failed, log for admin but don't expose details to user
-                Log::error('Password reset email failed for: ' . $request->email);
-                Log::error('Error: ' . $emailError->getMessage());
-                Log::error('Error trace: ' . $emailError->getTraceAsString());
-                Log::info('Reset link (for admin): ' . $resetLink);
+                Log::error('Password reset email failed', [
+                    'email' => $request->email,
+                    'error' => $emailError->getMessage(),
+                    'trace' => $emailError->getTraceAsString(),
+                    'reset_link' => $resetLink
+                ]);
                 
-                // Return error to user for debugging
-                return back()->withErrors(['email' => 'Failed to send email. Error: ' . $emailError->getMessage()]);
+                // In production, return a generic message. In development, show details.
+                if (config('app.debug')) {
+                    return back()->withErrors(['email' => 'Failed to send email. Error: ' . $emailError->getMessage()]);
+                } else {
+                    return back()->withErrors(['email' => 'Unable to send password reset email. Please contact support.']);
+                }
             }
 
             return back()->with('success', $successMessage);
         } catch (\Exception $e) {
             // Log the error for debugging
-            Log::error('Password reset error: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('Password reset error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if (config('app.debug')) {
+                return back()->withErrors(['email' => 'Error: ' . $e->getMessage()]);
+            }
             
             return back()->withErrors(['email' => 'Failed to process password reset. Please try again later.']);
         }
