@@ -10,6 +10,8 @@ use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -240,9 +242,241 @@ class DashboardController extends Controller
     /**
      * Reports page
      */
-    public function reports()
+    public function reports(Request $request)
     {
-        return view('modules.Leave-management.hr_admin.reports');
+        $departments = Department::all();
+        $leaveTypes = LeaveType::all();
+
+        // Determine date range
+        $period = $request->input('period', '7');
+        $endDate = Carbon::today();
+        $startDate = match ($period) {
+            '30' => Carbon::today()->subDays(30),
+            '90' => Carbon::today()->subDays(90),
+            '180' => Carbon::today()->subDays(180),
+            'ytd' => Carbon::now()->startOfYear(),
+            'custom' => $request->input('start_date') ? Carbon::parse($request->input('start_date')) : Carbon::today()->subDays(7),
+            default => Carbon::today()->subDays(7),
+        };
+        if ($period === 'custom' && $request->input('end_date')) {
+            $endDate = Carbon::parse($request->input('end_date'));
+        }
+
+        // Base query
+        $query = LeaveRequest::with(['user.department', 'leaveType'])
+            ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
+
+        // Department filter
+        if ($request->input('department') && $request->input('department') !== 'all') {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('department_id', $request->input('department'));
+            });
+        }
+
+        $leaveRequests = $query->orderBy('created_at', 'desc')->get();
+
+        // Stats
+        $totalLeaveDays = $leaveRequests->sum('total_days');
+        $avgLeaveDuration = $leaveRequests->count() > 0 ? round($leaveRequests->avg('total_days'), 1) : 0;
+        $approvedCount = $leaveRequests->where('status', 'approved')->count();
+        $approvalRate = $leaveRequests->count() > 0 ? round(($approvedCount / $leaveRequests->count()) * 100, 1) : 0;
+
+        // Most common leave type
+        $mostCommonType = $leaveRequests->groupBy('leave_type_id')->sortByDesc(function ($group) {
+            return $group->count();
+        })->keys()->first();
+        $mostCommonLeaveType = $mostCommonType ? (LeaveType::find($mostCommonType)->name ?? 'N/A') : 'N/A';
+        $mostCommonPercentage = $leaveRequests->count() > 0 && $mostCommonType
+            ? round(($leaveRequests->where('leave_type_id', $mostCommonType)->count() / $leaveRequests->count()) * 100, 1)
+            : 0;
+
+        $stats = [
+            'total_leave_days' => $totalLeaveDays,
+            'avg_leave_duration' => $avgLeaveDuration,
+            'most_common_leave_type' => $mostCommonLeaveType,
+            'most_common_percentage' => $mostCommonPercentage,
+            'approval_rate' => $approvalRate,
+        ];
+
+        // Monthly data for trends chart
+        $monthlyData = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = Carbon::now()->subMonths($i);
+            $count = LeaveRequest::whereMonth('created_at', $month->month)
+                ->whereYear('created_at', $month->year)
+                ->count();
+            $monthlyData[$month->format('M Y')] = $count;
+        }
+
+        // Leave type distribution
+        $leaveDistribution = [];
+        foreach ($leaveTypes as $lt) {
+            $count = $leaveRequests->where('leave_type_id', $lt->id)->count();
+            if ($count > 0) {
+                $leaveDistribution[$lt->name] = $count;
+            }
+        }
+
+        // Department stats
+        $departmentStats = [];
+        foreach ($departments as $dept) {
+            $deptLeaves = $leaveRequests->filter(function ($lr) use ($dept) {
+                return $lr->user && $lr->user->department_id == $dept->id;
+            });
+            if ($deptLeaves->count() > 0) {
+                $departmentStats[] = [
+                    'name' => $dept->name,
+                    'leave_days' => $deptLeaves->sum('total_days'),
+                    'avg_duration' => round($deptLeaves->avg('total_days'), 1),
+                ];
+            }
+        }
+
+        // Recent leaves
+        $recentLeaves = $leaveRequests->take(10);
+
+        return view('modules.Leave-management.hr_admin.reports', compact(
+            'stats', 'departments', 'leaveTypes', 'monthlyData',
+            'leaveDistribution', 'departmentStats', 'recentLeaves'
+        ));
+    }
+
+    /**
+     * Download Reports & Analytics as PDF
+     */
+    public function downloadReportsPdf(Request $request)
+    {
+        try {
+            $departments = Department::all();
+            $leaveTypes = LeaveType::all();
+
+            // Determine date range
+            $period = $request->input('period', '7');
+            $endDate = Carbon::today();
+            $startDate = match ($period) {
+                '30' => Carbon::today()->subDays(30),
+                '90' => Carbon::today()->subDays(90),
+                '180' => Carbon::today()->subDays(180),
+                'ytd' => Carbon::now()->startOfYear(),
+                'custom' => $request->input('start_date') ? Carbon::parse($request->input('start_date')) : Carbon::today()->subDays(7),
+                default => Carbon::today()->subDays(7),
+            };
+            if ($period === 'custom' && $request->input('end_date')) {
+                $endDate = Carbon::parse($request->input('end_date'));
+            }
+
+            $periodLabels = [
+                '7' => 'Last 7 Days',
+                '30' => 'Last 30 Days',
+                '90' => 'Last 3 Months',
+                '180' => 'Last 6 Months',
+                'ytd' => 'Year to Date',
+                'custom' => 'Custom Range (' . $startDate->format('M d, Y') . ' - ' . $endDate->format('M d, Y') . ')',
+            ];
+            $periodLabel = $periodLabels[$period] ?? 'Last 7 Days';
+
+            // Base query
+            $query = LeaveRequest::with(['user.department', 'leaveType'])
+                ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
+
+            $filterDeptName = 'All Departments';
+            if ($request->input('department') && $request->input('department') !== 'all') {
+                $query->whereHas('user', function ($q) use ($request) {
+                    $q->where('department_id', $request->input('department'));
+                });
+                $dept = Department::find($request->input('department'));
+                $filterDeptName = $dept ? $dept->name : 'Selected';
+            }
+
+            $reportTypeLabels = [
+                'summary' => 'Leave Summary',
+                'department' => 'Department Analysis',
+                'trends' => 'Leave Trends',
+                'employee' => 'Employee Utilization',
+            ];
+            $reportType = $request->input('report_type', 'summary');
+            $reportTypeLabel = $reportTypeLabels[$reportType] ?? 'Leave Summary';
+
+            $leaveRequests = $query->orderBy('created_at', 'desc')->get();
+
+            // Stats
+            $totalLeaveDays = $leaveRequests->sum('total_days');
+            $avgLeaveDuration = $leaveRequests->count() > 0 ? round($leaveRequests->avg('total_days'), 1) : 0;
+            $approvedCount = $leaveRequests->where('status', 'approved')->count();
+            $pendingCount = $leaveRequests->where('status', 'pending')->count();
+            $rejectedCount = $leaveRequests->where('status', 'rejected')->count();
+            $approvalRate = $leaveRequests->count() > 0 ? round(($approvedCount / $leaveRequests->count()) * 100, 1) : 0;
+
+            $mostCommonType = $leaveRequests->groupBy('leave_type_id')->sortByDesc(function ($group) {
+                return $group->count();
+            })->keys()->first();
+            $mostCommonLeaveType = $mostCommonType ? (LeaveType::find($mostCommonType)->name ?? 'N/A') : 'N/A';
+
+            $stats = [
+                'total_requests' => $leaveRequests->count(),
+                'total_leave_days' => $totalLeaveDays,
+                'avg_leave_duration' => $avgLeaveDuration,
+                'approved' => $approvedCount,
+                'pending' => $pendingCount,
+                'rejected' => $rejectedCount,
+                'approval_rate' => $approvalRate,
+                'most_common_leave_type' => $mostCommonLeaveType,
+            ];
+
+            // Leave type distribution
+            $leaveDistribution = [];
+            foreach ($leaveTypes as $lt) {
+                $count = $leaveRequests->where('leave_type_id', $lt->id)->count();
+                if ($count > 0) {
+                    $leaveDistribution[] = ['name' => $lt->name, 'count' => $count];
+                }
+            }
+
+            // Department stats
+            $departmentStats = [];
+            foreach ($departments as $deptItem) {
+                $deptLeaves = $leaveRequests->filter(function ($lr) use ($deptItem) {
+                    return $lr->user && $lr->user->department_id == $deptItem->id;
+                });
+                if ($deptLeaves->count() > 0) {
+                    $departmentStats[] = [
+                        'name' => $deptItem->name,
+                        'total_requests' => $deptLeaves->count(),
+                        'leave_days' => $deptLeaves->sum('total_days'),
+                        'avg_duration' => round($deptLeaves->avg('total_days'), 1),
+                        'approved' => $deptLeaves->where('status', 'approved')->count(),
+                        'pending' => $deptLeaves->where('status', 'pending')->count(),
+                        'rejected' => $deptLeaves->where('status', 'rejected')->count(),
+                    ];
+                }
+            }
+
+            $filters = [
+                'period' => $periodLabel,
+                'department' => $filterDeptName,
+                'report_type' => $reportTypeLabel,
+            ];
+
+            $pdf = Pdf::loadView('modules.Leave-management.hr_admin.reports-pdf', [
+                'leaveRequests' => $leaveRequests,
+                'stats' => $stats,
+                'filters' => $filters,
+                'leaveDistribution' => $leaveDistribution,
+                'departmentStats' => $departmentStats,
+            ])
+            ->setPaper('a4', 'landscape')
+            ->setOption('margin-top', 10)
+            ->setOption('margin-bottom', 10)
+            ->setOption('margin-left', 10)
+            ->setOption('margin-right', 10);
+
+            $filename = 'Reports_Analytics_' . Carbon::now()->format('Y-m-d_H-i') . '.pdf';
+            return $pdf->download($filename);
+
+        } catch (\Exception $e) {
+            Log::error('Error generating reports PDF: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error generating PDF report: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -74,7 +74,10 @@
                 <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200 font-medium">
                     Generate Report
                 </button>
-                <button type="button" onclick="exportReport()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200">
+                <a href="{{ route('admin.reports.download-pdf') }}?{{ http_build_query(request()->all()) }}" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition duration-200 flex items-center" title="Download PDF Report">
+                    <i class="fas fa-file-pdf"></i>
+                </a>
+                <button type="button" onclick="exportReport()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition duration-200" title="Export CSV">
                     <i class="fas fa-download text-gray-600"></i>
                 </button>
             </div>

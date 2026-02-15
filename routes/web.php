@@ -102,6 +102,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/dashboard/recent-requests', [HrAdminDashboardController::class, 'getRecentLeaveRequests'])->name('admin.dashboard.recent-requests');
     Route::get('/dashboard/chart-data', [HrAdminDashboardController::class, 'getChartData'])->name('admin.dashboard.chart-data');
     Route::get('/reports', [HrAdminDashboardController::class, 'reports'])->name('admin.reports');
+    Route::get('/reports/download-pdf', [HrAdminDashboardController::class, 'downloadReportsPdf'])->name('admin.reports.download-pdf');
     Route::get('/settings', [HrAdminDashboardController::class, 'settings'])->name('admin.settings');
     
     // Employee Management
