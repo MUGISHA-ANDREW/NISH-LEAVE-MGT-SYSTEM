@@ -1,87 +1,46 @@
 # Copy-Paste These into Railway Variables
 
 ## Instructions:
-1. Go to Railway Dashboard
-2. Select your project "nish-leave-mgt-system-production"
-3. Click "Variables" tab
-4. Click "New Variable" for each one below
-5. Copy and paste exactly as shown
-6. Save
+1. Go to Railway Dashboard -> your project
+2. Click "Variables" tab
+3. Add EACH variable below (click "New Variable" for each)
+4. Click "Save" after adding all variables
 
 ---
 
-## Environment Variables (Update APP_URL with your actual domain):
+## Core App Variables:
 
-```
 APP_ENV=production
-```
-
-```
-APP_DEBUG=false
-```
-
-```
-APP_URL=https://nish-leave-mgt-system-production.up.railway.app
-```
-
-```
+APP_DEBUG=true
+APP_URL=https://nish-leave-mgt-system.up.railway.app
 SESSION_DRIVER=database
-```
-
-```
 SESSION_SECURE_COOKIE=true
-```
-
-```
 SESSION_HTTP_ONLY=true
-```
-
-```
 SESSION_SAME_SITE=lax
-```
 
-## Mail Configuration (REQUIRED TO FIX 500 ERROR)
+## Mail Configuration (REQUIRED for password reset emails):
 
-```
 MAIL_MAILER=smtp
-```
-
-```
 MAIL_HOST=smtp.gmail.com
-```
-
-```
 MAIL_PORT=587
-```
-
-```
 MAIL_USERNAME=andrewmugisha699@gmail.com
-```
-
-```
-MAIL_PASSWORD=fgjocmethlogxhdl
-```
-
-```
+MAIL_PASSWORD=aqjgmcssfdoynwys
 MAIL_ENCRYPTION=tls
-```
-
-```
 MAIL_FROM_ADDRESS=andrewmugisha699@gmail.com
-```
-
-```
 MAIL_FROM_NAME="Nish Auto Limited"
-```
 
 ---
 
-## After Adding Variables:
+## After Adding/Updating Variables:
 
 Railway will automatically redeploy. Wait for:
 - Build to complete
 - Deployment to succeed
 
-Then test: https://nish-leave-mgt-system-production.up.railway.app/login
+Then test:
+1. Go to https://nish-leave-mgt-system.up.railway.app/forgot-password
+2. Enter an email address
+3. Click "Send Reset Link"
+4. Check inbox (and spam folder) for the reset email
 
-**Expected result:** No "Form is not secure" warning! ✅
+NOTE: Once everything is working, set APP_DEBUG=false for production security.

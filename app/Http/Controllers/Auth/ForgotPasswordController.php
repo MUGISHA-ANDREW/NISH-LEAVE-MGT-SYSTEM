@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use App\Models\User;
 use Carbon\Carbon;
@@ -15,15 +16,36 @@ use Carbon\Carbon;
 class ForgotPasswordController extends Controller
 {
     /**
+     * Ensure the password_resets table exists
+     */
+    private function ensurePasswordResetsTableExists(): void
+    {
+        if (!Schema::hasTable('password_resets')) {
+            Schema::create('password_resets', function ($table) {
+                $table->string('email')->index();
+                $table->string('token');
+                $table->timestamp('created_at')->nullable();
+            });
+            Log::info('Created password_resets table on-the-fly');
+        }
+    }
+
+    /**
      * Show the forgot password form
      */
     public function showForgotPasswordForm()
     {
-        return view('auth.forgot-password');
+        try {
+            return view('auth.forgot-password');
+        } catch (\Exception $e) {
+            Log::error('Failed to show forgot password form: ' . $e->getMessage());
+            return redirect()->route('login')
+                ->withErrors(['email' => 'Password reset is temporarily unavailable. Please try again later.']);
+        }
     }
 
     /**
-     * Handle forgot password request
+     * Handle forgot password request - sends reset link via email
      */
     public function sendResetLink(Request $request)
     {
@@ -34,81 +56,59 @@ class ForgotPasswordController extends Controller
 
             // Check if user exists
             $user = User::where('email', $request->email)->first();
-            
+
             if (!$user) {
                 // Don't reveal if email exists or not (security best practice)
                 return back()->with('success', 'If that email exists in our system, we have sent a password reset link.');
             }
-            
+
+            // Ensure the password_resets table exists
+            $this->ensurePasswordResetsTableExists();
+
             // Generate a unique token
             $token = Str::random(64);
 
-            // Store the token in the password_resets table
-            DB::table('password_resets')->updateOrInsert(
-                ['email' => $request->email],
-                [
-                    'token' => Hash::make($token),
-                    'created_at' => Carbon::now()
-                ]
-            );
-
-            // Send the reset link via email
-            $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
-            
-            // Log for debugging
-            Log::info('Attempting to send password reset email', [
+            // Delete any existing tokens for this email first, then insert new one
+            DB::table('password_resets')->where('email', $request->email)->delete();
+            DB::table('password_resets')->insert([
                 'email' => $request->email,
+                'token' => Hash::make($token),
+                'created_at' => Carbon::now(),
+            ]);
+
+            // Build the reset link
+            $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
+
+            // Log mail config for debugging
+            Log::info('Sending password reset email', [
+                'to' => $request->email,
                 'mailer' => config('mail.default'),
                 'host' => config('mail.mailers.smtp.host'),
                 'port' => config('mail.mailers.smtp.port'),
-                'encryption' => config('mail.mailers.smtp.encryption'),
                 'from' => config('mail.from.address'),
             ]);
-            
-            // Send email with proper error handling
-            try {
-                Mail::send('emails.password-reset', ['link' => $resetLink], function($message) use ($request) {
-                    $message->to($request->email);
-                    $message->subject('Password Reset Request - Nish Auto Limited');
-                });
-                
-                // Check if email was queued or sent successfully
-                if (count(Mail::failures()) > 0) {
-                    throw new \Exception('Failed to send email to: ' . $request->email);
-                }
-                
-                Log::info('Password reset email sent successfully to: ' . $request->email);
-                $successMessage = 'We have emailed your password reset link! Please check your inbox and spam folder.';
-            } catch (\Exception $emailError) {
-                // Email sending failed, log for admin but don't expose details to user
-                Log::error('Password reset email failed', [
-                    'email' => $request->email,
-                    'error' => $emailError->getMessage(),
-                    'trace' => $emailError->getTraceAsString(),
-                    'reset_link' => $resetLink
-                ]);
-                
-                // In production, return a generic message. In development, show details.
-                if (config('app.debug')) {
-                    return back()->withErrors(['email' => 'Failed to send email. Error: ' . $emailError->getMessage()]);
-                } else {
-                    return back()->withErrors(['email' => 'Unable to send password reset email. Please contact support.']);
-                }
-            }
 
-            return back()->with('success', $successMessage);
+            // Send the email
+            Mail::send('emails.password-reset', ['link' => $resetLink], function ($message) use ($request) {
+                $message->to($request->email)
+                        ->subject('Password Reset Request - Nish Auto Limited');
+            });
+
+            Log::info('Password reset email sent successfully to: ' . $request->email);
+
+            return back()->with('success', 'We have emailed your password reset link! Please check your inbox and spam folder.');
+
         } catch (\Exception $e) {
-            // Log the error for debugging
             Log::error('Password reset error', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
-            if (config('app.debug')) {
-                return back()->withErrors(['email' => 'Error: ' . $e->getMessage()]);
-            }
-            
-            return back()->withErrors(['email' => 'Failed to process password reset. Please try again later.']);
+
+            return back()->withErrors([
+                'email' => config('app.debug')
+                    ? 'Error: ' . $e->getMessage()
+                    : 'Unable to send password reset email. Please try again later or contact support.',
+            ]);
         }
     }
 
@@ -118,7 +118,7 @@ class ForgotPasswordController extends Controller
     public function showResetPasswordForm($token, Request $request)
     {
         $email = $request->query('email');
-        
+
         if (!$email) {
             return redirect()->route('login')->withErrors(['email' => 'Invalid reset link.']);
         }
@@ -134,37 +134,61 @@ class ForgotPasswordController extends Controller
         $request->validate([
             'email' => 'required|email|exists:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'token' => 'required'
+            'token' => 'required',
         ]);
 
-        // Check if token exists and is not expired (valid for 60 minutes)
-        $passwordReset = DB::table('password_resets')
-            ->where('email', $request->email)
-            ->first();
+        try {
+            // Ensure table exists
+            $this->ensurePasswordResetsTableExists();
 
-        if (!$passwordReset) {
-            return back()->withErrors(['email' => 'Invalid reset token.']);
+            // Check if token exists and is not expired
+            $passwordReset = DB::table('password_resets')
+                ->where('email', $request->email)
+                ->first();
+
+            if (!$passwordReset) {
+                return back()->withErrors(['email' => 'Invalid or expired reset token. Please request a new link.']);
+            }
+
+            // Check if token matches
+            if (!Hash::check($request->token, $passwordReset->token)) {
+                return back()->withErrors(['email' => 'Invalid reset token. Please request a new link.']);
+            }
+
+            // Check if token is expired (60 minutes)
+            $createdAt = Carbon::parse($passwordReset->created_at);
+            if ($createdAt->addMinutes(60)->isPast()) {
+                // Clean up the expired token
+                DB::table('password_resets')->where('email', $request->email)->delete();
+                return back()->withErrors(['email' => 'Reset link has expired. Please request a new one.']);
+            }
+
+            // Update user password
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user) {
+                return back()->withErrors(['email' => 'User not found.']);
+            }
+
+            $user->password = Hash::make($request->password);
+            $user->save();
+
+            // Delete the used reset token
+            DB::table('password_resets')->where('email', $request->email)->delete();
+
+            Log::info('Password reset successful for: ' . $request->email);
+
+            return redirect()->route('login')->with('success', 'Your password has been reset successfully! Please login with your new password.');
+
+        } catch (\Exception $e) {
+            Log::error('Password reset failed', [
+                'error' => $e->getMessage(),
+                'email' => $request->email,
+            ]);
+
+            return back()->withErrors([
+                'email' => 'Failed to reset password. Please try again.',
+            ]);
         }
-
-        // Check if token matches
-        if (!Hash::check($request->token, $passwordReset->token)) {
-            return back()->withErrors(['email' => 'Invalid reset token.']);
-        }
-
-        // Check if token is expired (60 minutes)
-        $createdAt = Carbon::parse($passwordReset->created_at);
-        if ($createdAt->addMinutes(60)->isPast()) {
-            return back()->withErrors(['email' => 'Reset link has expired. Please request a new one.']);
-        }
-
-        // Update user password
-        $user = User::where('email', $request->email)->first();
-        $user->password = Hash::make($request->password);
-        $user->save();
-
-        // Delete the reset token
-        DB::table('password_resets')->where('email', $request->email)->delete();
-
-        return redirect()->route('login')->with('success', 'Your password has been reset successfully!');
     }
 }
