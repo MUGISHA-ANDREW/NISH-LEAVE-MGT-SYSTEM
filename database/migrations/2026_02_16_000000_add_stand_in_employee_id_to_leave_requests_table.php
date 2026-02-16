@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('leave_requests', function (Blueprint $table) {
-            $table->unsignedBigInteger('stand_in_employee_id')->nullable()->after('status');
-            $table->foreign('stand_in_employee_id')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('set null');
-        });
+        if (!Schema::hasColumn('leave_requests', 'stand_in_employee_id')) {
+            Schema::table('leave_requests', function (Blueprint $table) {
+                $table->unsignedBigInteger('stand_in_employee_id')->nullable()->after('status');
+                $table->foreign('stand_in_employee_id')
+                      ->references('id')
+                      ->on('users')
+                      ->onDelete('set null');
+            });
+        }
     }
 
     /**
@@ -25,9 +27,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('leave_requests', function (Blueprint $table) {
-            $table->dropForeign(['stand_in_employee_id']);
-            $table->dropColumn('stand_in_employee_id');
-        });
+        if (Schema::hasColumn('leave_requests', 'stand_in_employee_id')) {
+            Schema::table('leave_requests', function (Blueprint $table) {
+                $table->dropForeign(['stand_in_employee_id']);
+                $table->dropColumn('stand_in_employee_id');
+            });
+        }
     }
 };

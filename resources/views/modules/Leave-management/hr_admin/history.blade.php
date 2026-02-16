@@ -182,6 +182,7 @@
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee & Department</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Details</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timeline</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stand-In</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status & Approval</th>
                         <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -308,6 +309,23 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4">
+                                @if($request->standInEmployee)
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center">
+                                            <span class="text-indigo-600 text-xs font-semibold">
+                                                {{ strtoupper(substr($request->standInEmployee->first_name, 0, 1) . substr($request->standInEmployee->last_name, 0, 1)) }}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900">{{ $request->standInEmployee->first_name }} {{ $request->standInEmployee->last_name }}</div>
+                                            <div class="text-xs text-gray-500">{{ $request->standInEmployee->employee_id ?? '' }}</div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <span class="text-xs text-gray-400">&mdash;</span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4">
                                 <div class="space-y-2">
                                     <span class="px-3 py-1 bg-{{ $statusColor }}-100 text-{{ $statusColor }}-800 text-xs rounded-full font-medium capitalize">
                                         {{ $request->status }}
@@ -364,7 +382,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center">
+                            <td colspan="6" class="px-6 py-12 text-center">
                                 <i class="fas fa-calendar-times text-gray-400 text-4xl mb-3"></i>
                                 <p class="text-gray-500">No leave requests found</p>
                                 @if(request()->hasAny(['department', 'employee', 'status', 'month', 'leave_type']))

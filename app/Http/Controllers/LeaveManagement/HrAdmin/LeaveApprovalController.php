@@ -360,7 +360,7 @@ class LeaveApprovalController extends Controller
 {
     try {
         // Start query with all leave requests
-        $query = LeaveRequest::with(['user', 'user.department', 'leaveType'])
+        $query = LeaveRequest::with(['user', 'user.department', 'leaveType', 'standInEmployee'])
             ->orderBy('created_at', 'desc');
         
         // Apply filters

@@ -45,7 +45,7 @@ class LeaveApprovalController extends Controller
     $department = $user->department;
     
     // Get leaves where department head has taken action
-    $leaveHistory = LeaveRequest::with(['user', 'leaveType', 'approvals'])
+    $leaveHistory = LeaveRequest::with(['user', 'leaveType', 'approvals', 'standInEmployee'])
         ->whereHas('user', function($query) use ($department) {
             $query->where('department_id', $department->id);
         })
