@@ -82,6 +82,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/pending-leaves', [DeptHeadLeaveApprovalController::class, 'pending'])->name('head.leaves.pending');
         Route::get('/leave-history', [DeptHeadLeaveApprovalController::class, 'history'])->name('head.leaves.history');
         Route::get('/leave/{id}', [DeptHeadLeaveApprovalController::class, 'show'])->name('head.leave.details');
+        Route::get('/leave/{id}/stand-in-candidates', [DeptHeadLeaveApprovalController::class, 'getStandInCandidates'])->name('head.leave.stand-in-candidates');
         
         // Calendar
         Route::get('/team-calendar', [DepartmentCalendarController::class, 'index'])->name('head.team.calendar');

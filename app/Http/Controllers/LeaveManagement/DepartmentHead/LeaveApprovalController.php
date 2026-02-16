@@ -5,6 +5,7 @@ namespace App\Http\Controllers\LeaveManagement\DepartmentHead;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\LeaveRequest;
 use App\Models\Department;
 use App\Models\User;
@@ -63,24 +64,24 @@ class LeaveApprovalController extends Controller
      */
    public function approve(Request $request, $id)
 {
-    \Log::info('=== APPROVE METHOD STARTED ===');
-    \Log::info('Leave ID: ' . $id);
-    \Log::info('User ID: ' . Auth::id());
-    \Log::info('Request Data: ', $request->all());
+    Log::info('=== APPROVE METHOD STARTED ===');
+    Log::info('Leave ID: ' . $id);
+    Log::info('User ID: ' . Auth::id());
+    Log::info('Request Data: ', $request->all());
     
     try {
-        \Log::info('Looking for leave request with ID: ' . $id);
+        Log::info('Looking for leave request with ID: ' . $id);
         $leaveRequest = LeaveRequest::with('user')->find($id);
         
         if (!$leaveRequest) {
-            \Log::error('Leave request not found with ID: ' . $id);
+            Log::error('Leave request not found with ID: ' . $id);
             return response()->json([
                 'success' => false,
                 'message' => 'Leave request not found.'
             ], 404);
         }
         
-        \Log::info('Leave request found:', [
+        Log::info('Leave request found:', [
             'id' => $leaveRequest->id,
             'user_id' => $leaveRequest->user_id,
             'user_department_id' => $leaveRequest->user->department_id,
@@ -88,7 +89,7 @@ class LeaveApprovalController extends Controller
         ]);
 
         $user = Auth::user();
-        \Log::info('Current user:', [
+        Log::info('Current user:', [
             'id' => $user->id,
             'department_id' => $user->department_id,
             'name' => $user->name
@@ -96,7 +97,7 @@ class LeaveApprovalController extends Controller
         
         // Check if the leave request belongs to user's department
         if ($leaveRequest->user->department_id !== $user->department_id) {
-            \Log::error('Department mismatch:', [
+            Log::error('Department mismatch:', [
                 'leave_user_department' => $leaveRequest->user->department_id,
                 'current_user_department' => $user->department_id
             ]);
@@ -108,7 +109,7 @@ class LeaveApprovalController extends Controller
 
         // Check if already processed
         if ($leaveRequest->status !== 'pending') {
-            \Log::warning('Leave already processed:', [
+            Log::warning('Leave already processed:', [
                 'current_status' => $leaveRequest->status
             ]);
             return response()->json([
@@ -123,7 +124,7 @@ class LeaveApprovalController extends Controller
             ->first();
             
         if ($existingApproval) {
-            \Log::warning('Department head already approved this request:', [
+            Log::warning('Department head already approved this request:', [
                 'approval_status' => $existingApproval->status
             ]);
             return response()->json([
@@ -132,8 +133,30 @@ class LeaveApprovalController extends Controller
             ], 400);
         }
 
-        \Log::info('Creating department head approval record');
+        Log::info('Creating department head approval record');
         
+        // Validate stand-in employee
+        if (!$request->stand_in_employee_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please select a stand-in employee before approving.'
+            ], 422);
+        }
+
+        // Verify stand-in is in same department, not on leave, and not the applicant
+        $standIn = User::where('id', $request->stand_in_employee_id)
+            ->where('department_id', $leaveRequest->user->department_id)
+            ->where('status', 'active')
+            ->where('id', '!=', $leaveRequest->user_id)
+            ->first();
+
+        if (!$standIn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid stand-in employee selected.'
+            ], 422);
+        }
+
         // Create approval record instead of updating leave request status
         $approval = \App\Models\Approval::create([
             'leave_request_id' => $leaveRequest->id,
@@ -142,22 +165,28 @@ class LeaveApprovalController extends Controller
             'status' => 'approved',
             'remarks' => $request->head_remarks ?? 'Approved by department head - Waiting for HR approval'
         ]);
+
+        // Save the stand-in employee
+        $leaveRequest->update([
+            'stand_in_employee_id' => $standIn->id
+        ]);
         
-        \Log::info('Approval record created:', [
+        Log::info('Approval record created:', [
             'approval_id' => $approval->id,
             'level' => $approval->level,
-            'status' => $approval->status
+            'status' => $approval->status,
+            'stand_in_employee_id' => $standIn->id
         ]);
 
-        \Log::info('=== APPROVE METHOD COMPLETED SUCCESSFULLY ===');
+        Log::info('=== APPROVE METHOD COMPLETED SUCCESSFULLY ===');
         return response()->json([
             'success' => true,
             'message' => 'Leave request approved by department head. Now waiting for HR approval.'
         ]);
         
     } catch (\Exception $e) {
-        \Log::error('Error in approve method: ' . $e->getMessage());
-        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        Log::error('Error in approve method: ' . $e->getMessage());
+        Log::error('Stack trace: ' . $e->getTraceAsString());
         
         return response()->json([
             'success' => false,
@@ -171,17 +200,17 @@ class LeaveApprovalController extends Controller
      */
     public function reject(Request $request, $id)
 {
-    \Log::info('=== REJECT METHOD STARTED ===');
-    \Log::info('Leave ID: ' . $id);
-    \Log::info('User ID: ' . Auth::id());
-    \Log::info('Request Data: ', $request->all());
+    Log::info('=== REJECT METHOD STARTED ===');
+    Log::info('Leave ID: ' . $id);
+    Log::info('User ID: ' . Auth::id());
+    Log::info('Request Data: ', $request->all());
     
     try {
-        \Log::info('Looking for leave request with ID: ' . $id);
+        Log::info('Looking for leave request with ID: ' . $id);
         $leaveRequest = LeaveRequest::with('user')->find($id);
         
         if (!$leaveRequest) {
-            \Log::error('Leave request not found with ID: ' . $id);
+            Log::error('Leave request not found with ID: ' . $id);
             return response()->json([
                 'success' => false,
                 'message' => 'Leave request not found.'
@@ -238,14 +267,14 @@ class LeaveApprovalController extends Controller
             'rejection_reason' => $request->reason
         ]);
 
-        \Log::info('=== REJECT METHOD COMPLETED SUCCESSFULLY ===');
+        Log::info('=== REJECT METHOD COMPLETED SUCCESSFULLY ===');
         return response()->json([
             'success' => true,
             'message' => 'Leave request rejected.'
         ]);
         
     } catch (\Exception $e) {
-        \Log::error('Error in reject method: ' . $e->getMessage());
+        Log::error('Error in reject method: ' . $e->getMessage());
         return response()->json([
             'success' => false,
             'message' => 'Error rejecting leave request: ' . $e->getMessage()
@@ -318,5 +347,61 @@ class LeaveApprovalController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    /**
+     * Get available stand-in employees for a leave request
+     * Returns employees in same department who are active and not currently on leave
+     */
+    public function getStandInCandidates($id)
+    {
+        try {
+            $leaveRequest = LeaveRequest::with('user')->findOrFail($id);
+            $user = Auth::user();
+
+            // Verify department access
+            if ($leaveRequest->user->department_id !== $user->department_id) {
+                return response()->json(['success' => false, 'message' => 'Access denied.'], 403);
+            }
+
+            $departmentId = $leaveRequest->user->department_id;
+            $startDate = $leaveRequest->start_date;
+            $endDate = $leaveRequest->end_date;
+
+            // Get active employees in the same department, excluding the leave applicant
+            $candidates = User::where('department_id', $departmentId)
+                ->where('status', 'active')
+                ->where('id', '!=', $leaveRequest->user_id)
+                ->where('id', '!=', $user->id) // exclude the head themselves
+                ->whereDoesntHave('leaveRequests', function ($query) use ($startDate, $endDate) {
+                    $query->where('status', 'approved')
+                          ->where(function ($q) use ($startDate, $endDate) {
+                              $q->whereBetween('start_date', [$startDate, $endDate])
+                                ->orWhereBetween('end_date', [$startDate, $endDate])
+                                ->orWhere(function ($q2) use ($startDate, $endDate) {
+                                    $q2->where('start_date', '<=', $startDate)
+                                        ->where('end_date', '>=', $endDate);
+                                });
+                          });
+                })
+                ->select('id', 'first_name', 'last_name', 'employee_id', 'designation')
+                ->orderBy('first_name')
+                ->get()
+                ->map(function ($emp) {
+                    return [
+                        'id' => $emp->id,
+                        'name' => $emp->first_name . ' ' . $emp->last_name,
+                        'employee_id' => $emp->employee_id,
+                        'designation' => $emp->designation,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'candidates' => $candidates,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error fetching candidates.'], 500);
+        }
     }
 }

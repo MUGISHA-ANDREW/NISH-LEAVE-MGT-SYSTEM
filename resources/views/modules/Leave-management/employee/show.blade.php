@@ -97,8 +97,8 @@
             <p class="text-gray-700 bg-gray-50 p-4 rounded-lg">{{ $leaveRequest->reason }}</p>
         </div>
 
-        <!-- Stand-In Employee (visible when assigned) -->
-        @if($leaveRequest->standInEmployee)
+        <!-- Stand-In Employee (visible only after HR approval) -->
+        @if($leaveRequest->status === 'approved' && $leaveRequest->standInEmployee)
         <div class="bg-white border border-indigo-200 rounded-lg p-4 mb-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-3">
                 <i class="fas fa-user-shield text-indigo-600 mr-2"></i>Assigned Stand-In Employee

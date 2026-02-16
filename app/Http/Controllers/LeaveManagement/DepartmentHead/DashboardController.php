@@ -125,6 +125,28 @@ class DashboardController extends Controller
 
         Log::info('Creating department head approval record');
         
+        // Validate stand-in employee
+        if (!$request->stand_in_employee_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please select a stand-in employee before approving.'
+            ], 422);
+        }
+
+        // Verify stand-in is in same department, not on leave, and not the applicant
+        $standIn = User::where('id', $request->stand_in_employee_id)
+            ->where('department_id', $leaveRequest->user->department_id)
+            ->where('status', 'active')
+            ->where('id', '!=', $leaveRequest->user_id)
+            ->first();
+
+        if (!$standIn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid stand-in employee selected.'
+            ], 422);
+        }
+
         // Create approval record instead of updating leave request status
         $approval = \App\Models\Approval::create([
             'leave_request_id' => $leaveRequest->id,
@@ -133,11 +155,17 @@ class DashboardController extends Controller
             'status' => 'approved',
             'remarks' => $request->head_remarks ?? 'Approved by department head - Waiting for HR approval'
         ]);
+
+        // Save the stand-in employee
+        $leaveRequest->update([
+            'stand_in_employee_id' => $standIn->id
+        ]);
         
         Log::info('Approval record created:', [
             'approval_id' => $approval->id,
             'level' => $approval->level,
-            'status' => $approval->status
+            'status' => $approval->status,
+            'stand_in_employee_id' => $standIn->id
         ]);
 
         // IMPORTANT: Do NOT change leave request status here

@@ -182,9 +182,28 @@
 
         <!-- Approval Modal -->
         <div id="approvalModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-            <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">Approve Leave Request</h3>
                 <p class="text-sm text-gray-600 mb-4" id="approvalInfo"></p>
+                
+                <!-- Stand-In Employee Selection -->
+                <div class="mb-4">
+                    <label for="standInEmployee" class="block text-sm font-medium text-gray-700 mb-1">
+                        <i class="fas fa-user-shield text-indigo-600 mr-1"></i>Select Stand-In Employee <span class="text-red-500">*</span>
+                    </label>
+                    <p class="text-xs text-gray-500 mb-2">Choose an employee from the same department who will cover during this leave. Only employees not on leave during this period are shown.</p>
+                    <div id="standInLoading" class="hidden">
+                        <div class="flex items-center text-sm text-gray-500 py-2">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>Loading available employees...
+                        </div>
+                    </div>
+                    <select id="standInEmployee" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">-- Select Stand-In Employee --</option>
+                    </select>
+                    <p id="standInError" class="text-xs text-red-500 mt-1 hidden">Please select a stand-in employee</p>
+                    <p id="noStandInMsg" class="text-xs text-orange-500 mt-1 hidden">No available employees found for this period</p>
+                </div>
+
                 <div class="mb-4">
                     <label for="approvalRemarks" class="block text-sm font-medium text-gray-700 mb-1">Remarks (Optional)</label>
                     <textarea id="approvalRemarks" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Add any remarks..."></textarea>
@@ -242,6 +261,50 @@
                     setTimeout(() => notification.remove(), 5000);
                 }
 
+                function loadStandInCandidates(leaveId) {
+                    const select = document.getElementById('standInEmployee');
+                    const loading = document.getElementById('standInLoading');
+                    const noMsg = document.getElementById('noStandInMsg');
+                    const errorMsg = document.getElementById('standInError');
+                    
+                    // Reset
+                    select.innerHTML = '<option value="">-- Select Stand-In Employee --</option>';
+                    select.classList.add('hidden');
+                    loading.classList.remove('hidden');
+                    noMsg.classList.add('hidden');
+                    errorMsg.classList.add('hidden');
+
+                    fetch(`/head/leave/${leaveId}/stand-in-candidates`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        loading.classList.add('hidden');
+                        select.classList.remove('hidden');
+                        
+                        if (data.success && data.candidates.length > 0) {
+                            data.candidates.forEach(emp => {
+                                const option = document.createElement('option');
+                                option.value = emp.id;
+                                option.textContent = `${emp.name} (${emp.employee_id || 'N/A'})${emp.designation ? ' - ' + emp.designation : ''}`;
+                                select.appendChild(option);
+                            });
+                        } else {
+                            noMsg.classList.remove('hidden');
+                        }
+                    })
+                    .catch(error => {
+                        loading.classList.add('hidden');
+                        select.classList.remove('hidden');
+                        noMsg.textContent = 'Error loading employees. Please try again.';
+                        noMsg.classList.remove('hidden');
+                    });
+                }
+
                 // Approve button functionality
                 document.querySelectorAll('.approve-btn').forEach(button => {
                     button.addEventListener('click', function() {
@@ -254,6 +317,9 @@
                             Approve leave request for <strong>${employeeName}</strong><br>
                             <span class="text-sm">${leaveType} - ${days} day(s)</span>
                         `;
+                        
+                        // Load stand-in candidates
+                        loadStandInCandidates(currentLeaveId);
                         
                         document.getElementById('approvalModal').classList.remove('hidden');
                         document.getElementById('approvalModal').classList.add('flex');
@@ -279,6 +345,8 @@
                     document.getElementById('approvalModal').classList.add('hidden');
                     document.getElementById('approvalModal').classList.remove('flex');
                     document.getElementById('approvalRemarks').value = '';
+                    document.getElementById('standInEmployee').value = '';
+                    document.getElementById('standInError').classList.add('hidden');
                     currentLeaveId = null;
                 };
 
@@ -290,6 +358,17 @@
                 };
 
                 window.submitApproval = function() {
+                    const standInId = document.getElementById('standInEmployee').value;
+                    const errorMsg = document.getElementById('standInError');
+                    
+                    // Validate stand-in selection
+                    if (!standInId) {
+                        errorMsg.classList.remove('hidden');
+                        document.getElementById('standInEmployee').focus();
+                        return;
+                    }
+                    errorMsg.classList.add('hidden');
+
                     const button = document.getElementById('approvalSubmitBtn');
                     const originalText = button.innerHTML;
                     const remarks = document.getElementById('approvalRemarks').value;
@@ -306,7 +385,8 @@
                             'Accept': 'application/json'
                         },
                         body: JSON.stringify({ 
-                            head_remarks: remarks || 'Approved by department head'
+                            head_remarks: remarks || 'Approved by department head',
+                            stand_in_employee_id: standInId
                         })
                     })
                     .then(response => response.json())

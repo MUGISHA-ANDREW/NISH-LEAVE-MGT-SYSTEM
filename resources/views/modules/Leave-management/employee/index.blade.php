@@ -88,6 +88,7 @@
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Details</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stand-In</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
@@ -114,6 +115,23 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ $request->total_days }} day{{ $request->total_days != 1 ? 's' : '' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($request->status === 'approved' && $request->standInEmployee)
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center">
+                                                <span class="text-indigo-600 text-xs font-semibold">
+                                                    {{ strtoupper(substr($request->standInEmployee->first_name, 0, 1) . substr($request->standInEmployee->last_name, 0, 1)) }}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-900">{{ $request->standInEmployee->first_name }} {{ $request->standInEmployee->last_name }}</div>
+                                                <div class="text-xs text-gray-500">{{ $request->standInEmployee->designation ?? '' }}</div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-3 py-1 {{ $request->getStatusBadgeClass() }} text-xs rounded-full font-medium">

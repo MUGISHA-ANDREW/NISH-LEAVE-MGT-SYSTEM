@@ -25,7 +25,7 @@ class LeaveController extends Controller
         $monthYear = $request->month_year;
 
         // Get leave requests with filters
-        $leaveRequests = LeaveRequest::with('leaveType')
+        $leaveRequests = LeaveRequest::with(['leaveType', 'standInEmployee'])
             ->where('user_id', $user->id)
             ->when($status && $status !== 'all', function($query) use ($status) {
                 return $query->where('status', $status);
