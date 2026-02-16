@@ -237,7 +237,7 @@ public function edit($id)
  */
 public function show($id)
 {
-    $leaveRequest = LeaveRequest::with(['leaveType', 'user'])
+    $leaveRequest = LeaveRequest::with(['leaveType', 'user', 'standInEmployee'])
         ->where('user_id', Auth::id())
         ->findOrFail($id);
 

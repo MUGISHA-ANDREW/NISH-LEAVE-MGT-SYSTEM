@@ -270,6 +270,109 @@
                 </div>
             </div>
             @endif
+
+            {{-- Stand-In Employee Section (Visible to HR only on approved leaves) --}}
+            @if($leaveRequest->status == 'approved' && Auth::user()->isAdmin())
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-user-shield text-indigo-600 mr-2"></i>Stand-In Employee Assignment
+                </h3>
+
+                @if($leaveRequest->standInEmployee)
+                    {{-- Currently assigned stand-in --}}
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                    <span class="text-indigo-600 font-semibold text-sm">
+                                        {{ strtoupper(substr($leaveRequest->standInEmployee->first_name, 0, 1) . substr($leaveRequest->standInEmployee->last_name, 0, 1)) }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">Currently Assigned</p>
+                                    <p class="text-base font-semibold text-indigo-700">
+                                        {{ $leaveRequest->standInEmployee->first_name }} {{ $leaveRequest->standInEmployee->last_name }}
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        {{ $leaveRequest->standInEmployee->employee_id ?? '' }}
+                                        @if($leaveRequest->standInEmployee->designation)
+                                            &middot; {{ $leaveRequest->standInEmployee->designation }}
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
+                                <i class="fas fa-check-circle mr-1"></i> Assigned
+                            </span>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Assignment / Reassignment Form --}}
+                <form action="{{ route('leaves.assign-stand-in', $leaveRequest->id) }}" method="POST" id="standInForm">
+                    @csrf
+                    <div class="mb-4">
+                        <label for="stand_in_employee_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            {{ $leaveRequest->standInEmployee ? 'Reassign Stand-In Employee' : 'Select Stand-In Employee' }}
+                        </label>
+                        <p class="text-xs text-gray-500 mb-2">
+                            Only employees from the same department ({{ $leaveRequest->user->department->name ?? 'N/A' }}) are shown.
+                        </p>
+                        <select name="stand_in_employee_id" id="stand_in_employee_id" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">-- Select Stand-In Employee --</option>
+                            @forelse($standInCandidates ?? [] as $candidate)
+                                <option value="{{ $candidate->id }}" 
+                                    {{ $leaveRequest->stand_in_employee_id == $candidate->id ? 'selected' : '' }}>
+                                    {{ $candidate->first_name }} {{ $candidate->last_name }}
+                                    ({{ $candidate->employee_id ?? 'N/A' }})
+                                    @if($candidate->designation) - {{ $candidate->designation }} @endif
+                                </option>
+                            @empty
+                                <option value="" disabled>No eligible employees found in this department</option>
+                            @endforelse
+                        </select>
+                        @error('stand_in_employee_id')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-200 font-medium"
+                            {{ empty($standInCandidates) || $standInCandidates->isEmpty() ? 'disabled' : '' }}>
+                        <i class="fas fa-user-shield mr-2"></i>
+                        {{ $leaveRequest->standInEmployee ? 'Reassign Stand-In' : 'Assign Stand-In' }}
+                    </button>
+                </form>
+            </div>
+            @endif
+
+            {{-- Stand-In Display (read-only, visible when stand-in is assigned for non-HR users) --}}
+            @if($leaveRequest->standInEmployee && !Auth::user()->isAdmin())
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-user-shield text-indigo-600 mr-2"></i>Stand-In Employee
+                </h3>
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                            <span class="text-indigo-600 font-semibold text-sm">
+                                {{ strtoupper(substr($leaveRequest->standInEmployee->first_name, 0, 1) . substr($leaveRequest->standInEmployee->last_name, 0, 1)) }}
+                            </span>
+                        </div>
+                        <div>
+                            <p class="text-base font-semibold text-gray-800">
+                                {{ $leaveRequest->standInEmployee->first_name }} {{ $leaveRequest->standInEmployee->last_name }}
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                {{ $leaveRequest->standInEmployee->employee_id ?? '' }}
+                                @if($leaveRequest->standInEmployee->designation)
+                                    &middot; {{ $leaveRequest->standInEmployee->designation }}
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -337,6 +440,23 @@
         if (approveForm) {
             approveForm.addEventListener('submit', function(e) {
                 if (!confirm('Are you sure you want to approve this leave request?')) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // Confirm stand-in assignment
+        const standInForm = document.getElementById('standInForm');
+        if (standInForm) {
+            standInForm.addEventListener('submit', function(e) {
+                const select = document.getElementById('stand_in_employee_id');
+                if (!select.value) {
+                    e.preventDefault();
+                    alert('Please select a stand-in employee.');
+                    return;
+                }
+                const selectedText = select.options[select.selectedIndex].text;
+                if (!confirm('Assign ' + selectedText + ' as the stand-in employee?')) {
                     e.preventDefault();
                 }
             });

@@ -145,6 +145,10 @@ Route::post('/leaves/{id}/reject', [HrAdminLeaveApprovalController::class, 'reje
     
     // Export
     Route::get('/leaves/export', [HrAdminLeaveApprovalController::class, 'export'])->name('leaves.export');
+
+    // Stand-in Employee Assignment
+    Route::post('/leaves/{id}/assign-stand-in', [HrAdminLeaveApprovalController::class, 'assignStandIn'])->name('leaves.assign-stand-in');
+    Route::get('/leaves/{id}/stand-in-candidates', [HrAdminLeaveApprovalController::class, 'getStandInCandidates'])->name('leaves.stand-in-candidates');
      
         
         // Download report (file download)

@@ -22,7 +22,8 @@ class LeaveRequest extends Model
         'status',
         'rejection_reason',
         'action_by',
-        'action_at'
+        'action_at',
+        'stand_in_employee_id'
     ];
 
     protected $casts = [
@@ -45,6 +46,14 @@ class LeaveRequest extends Model
     public function actionBy()
     {
         return $this->belongsTo(User::class, 'action_by');
+    }
+
+    /**
+     * Get the stand-in employee assigned to cover during this leave
+     */
+    public function standInEmployee()
+    {
+        return $this->belongsTo(User::class, 'stand_in_employee_id');
     }
 
     /**

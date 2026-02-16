@@ -480,7 +480,8 @@ class LeaveApprovalController extends Controller
                 'leaveType',
                 'actionBy',
                 'approvals',
-                'approvals.approver'
+                'approvals.approver',
+                'standInEmployee'
             ])->findOrFail($id);
             
             // Status colors for the view
@@ -490,8 +491,23 @@ class LeaveApprovalController extends Controller
                 'rejected' => 'red',
                 'cancelled' => 'gray'
             ];
+
+            // Get stand-in candidates if leave is approved and user is HR
+            $standInCandidates = collect();
+            /** @var \App\Models\User $authUser */
+            $authUser = Auth::user();
+            if ($leaveRequest->status === 'approved' && $authUser->isAdmin()) {
+                $standInCandidates = User::where('department_id', $leaveRequest->user->department_id)
+                    ->where('id', '!=', $leaveRequest->user_id)
+                    ->where('status', 'active')
+                    ->whereHas('role', function ($query) {
+                        $query->whereIn('name', ['employee', 'Employee']);
+                    })
+                    ->orderBy('first_name')
+                    ->get();
+            }
             
-            return view('modules.Leave-management.hr_admin.leave-details', compact('leaveRequest', 'statusColors'));
+            return view('modules.Leave-management.hr_admin.leave-details', compact('leaveRequest', 'statusColors', 'standInCandidates'));
             
         } catch (\Exception $e) {
             return redirect()->route('admin.leaves.history')
@@ -808,4 +824,116 @@ private function cleanCsvValue($value)
     
     return trim($value);
 }
+
+    /**
+     * Get eligible stand-in candidates for a leave request.
+     * Returns employees from the same department who have the 'employee' role
+     * and are not the leave request owner.
+     */
+    public function getStandInCandidates($id)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            // Only HR can access this
+            if (!$user->isAdmin()) {
+                return response()->json(['error' => 'Unauthorized. Only HR can view stand-in candidates.'], 403);
+            }
+
+            $leaveRequest = LeaveRequest::with('user')->findOrFail($id);
+
+            // Get eligible candidates: same department, role = employee, not the leave owner
+            $candidates = User::where('department_id', $leaveRequest->user->department_id)
+                ->where('id', '!=', $leaveRequest->user_id)
+                ->where('status', 'active')
+                ->whereHas('role', function ($query) {
+                    $query->whereIn('name', ['employee', 'Employee']);
+                })
+                ->orderBy('first_name')
+                ->get(['id', 'first_name', 'last_name', 'employee_id', 'designation']);
+
+            return response()->json([
+                'success' => true,
+                'candidates' => $candidates->map(function ($c) {
+                    return [
+                        'id' => $c->id,
+                        'name' => $c->first_name . ' ' . $c->last_name,
+                        'employee_id' => $c->employee_id,
+                        'designation' => $c->designation,
+                    ];
+                }),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching stand-in candidates: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to fetch stand-in candidates.'], 500);
+        }
+    }
+
+    /**
+     * Assign a stand-in employee to an approved leave request.
+     * Only HR users can perform this action.
+     * The stand-in must be from the same department, have role 'employee',
+     * and must not be the employee who requested the leave.
+     */
+    public function assignStandIn(Request $request, $id)
+    {
+        try {
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+
+            // Authorization: Only HR can assign stand-in
+            if (!$user->isAdmin()) {
+                return redirect()->back()->with('error', 'Unauthorized. Only HR can assign a stand-in employee.');
+            }
+
+            // Validate input
+            $request->validate([
+                'stand_in_employee_id' => 'required|exists:users,id',
+            ], [
+                'stand_in_employee_id.required' => 'Please select a stand-in employee.',
+                'stand_in_employee_id.exists' => 'The selected employee does not exist.',
+            ]);
+
+            $leaveRequest = LeaveRequest::with('user')->findOrFail($id);
+
+            // Status verification: Only allow assignment on approved leaves
+            if ($leaveRequest->status !== 'approved') {
+                return redirect()->back()->with('error', 'Stand-in can only be assigned to HR-approved leave requests.');
+            }
+
+            $standInEmployee = User::findOrFail($request->stand_in_employee_id);
+
+            // Verify stand-in is not the same employee
+            if ($standInEmployee->id === $leaveRequest->user_id) {
+                return redirect()->back()->with('error', 'The stand-in employee cannot be the same person requesting leave.');
+            }
+
+            // Verify stand-in belongs to the same department
+            if ($standInEmployee->department_id !== $leaveRequest->user->department_id) {
+                return redirect()->back()->with('error', 'The stand-in employee must belong to the same department.');
+            }
+
+            // Verify stand-in has 'employee' role
+            if (!$standInEmployee->isEmployee()) {
+                return redirect()->back()->with('error', 'The stand-in must have the employee role.');
+            }
+
+            // Assign the stand-in
+            $leaveRequest->update([
+                'stand_in_employee_id' => $standInEmployee->id,
+            ]);
+
+            Log::info("Stand-in assigned: Employee #{$standInEmployee->id} ({$standInEmployee->name}) assigned as stand-in for Leave Request #{$leaveRequest->id}");
+
+            return redirect()->back()->with('success', "Stand-in employee ({$standInEmployee->name}) assigned successfully.");
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()->withErrors($e->errors());
+        } catch (\Exception $e) {
+            Log::error('Error assigning stand-in: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred while assigning the stand-in employee.');
+        }
+    }
 }

@@ -97,6 +97,38 @@
             <p class="text-gray-700 bg-gray-50 p-4 rounded-lg">{{ $leaveRequest->reason }}</p>
         </div>
 
+        <!-- Stand-In Employee (visible when assigned) -->
+        @if($leaveRequest->standInEmployee)
+        <div class="bg-white border border-indigo-200 rounded-lg p-4 mb-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-3">
+                <i class="fas fa-user-shield text-indigo-600 mr-2"></i>Assigned Stand-In Employee
+            </h3>
+            <div class="bg-indigo-50 rounded-lg p-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <span class="text-indigo-600 text-lg font-semibold">
+                            {{ strtoupper(substr($leaveRequest->standInEmployee->first_name, 0, 1) . substr($leaveRequest->standInEmployee->last_name, 0, 1)) }}
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-lg font-semibold text-gray-800">
+                            {{ $leaveRequest->standInEmployee->first_name }} {{ $leaveRequest->standInEmployee->last_name }}
+                        </p>
+                        <p class="text-sm text-gray-500">
+                            {{ $leaveRequest->standInEmployee->employee_id ?? '' }}
+                            @if($leaveRequest->standInEmployee->designation)
+                                &middot; {{ $leaveRequest->standInEmployee->designation }}
+                            @endif
+                        </p>
+                        <p class="text-xs text-indigo-600 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>This employee will cover your duties during your leave
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- Actions -->
 <div class="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
     @if($leaveRequest->status == 'pending')
