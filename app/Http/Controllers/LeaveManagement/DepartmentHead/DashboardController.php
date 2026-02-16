@@ -496,6 +496,259 @@ public function leavePolicies()
     ));
 }
 
+/**
+     * Export leave reports to CSV/Excel
+     */
+    public function exportReports(Request $request)
+    {
+        $user = Auth::user();
+        $department = $user->department;
+
+        // Get all leave requests for the department
+        $leaveRequests = LeaveRequest::with(['user', 'leaveType', 'approvals'])
+            ->whereHas('user', function($query) use ($department) {
+                $query->where('department_id', $department->id);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $filename = 'leave_report_' . $department->name . '_' . date('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function() use ($leaveRequests) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
+
+            fputcsv($file, [
+                'Employee Name',
+                'Leave Type',
+                'Start Date',
+                'End Date',
+                'Total Days',
+                'Reason',
+                'Status',
+                'Applied Date',
+                'Processed Date',
+                'Dept Head Approval',
+                'HR Approval',
+                'Contact Number',
+                'Emergency Contact',
+            ]);
+
+            foreach ($leaveRequests as $leave) {
+                $deptApproval = $leave->approvals->where('level', 'department_head')->first();
+                $hrApproval = $leave->approvals->where('level', 'hr_admin')->first();
+
+                $processingDate = $leave->action_at 
+                    ? Carbon::parse($leave->action_at)->format('M d, Y') 
+                    : 'Pending';
+
+                fputcsv($file, [
+                    $leave->user->name ?? 'N/A',
+                    $leave->leaveType->name ?? 'N/A',
+                    $leave->start_date ? $leave->start_date->format('M d, Y') : 'N/A',
+                    $leave->end_date ? $leave->end_date->format('M d, Y') : 'N/A',
+                    $leave->total_days ?? 0,
+                    $leave->reason ?? '',
+                    ucfirst($leave->status ?? 'pending'),
+                    $leave->created_at ? $leave->created_at->format('M d, Y') : 'N/A',
+                    $processingDate,
+                    $deptApproval ? ucfirst($deptApproval->status) . ' on ' . $deptApproval->created_at->format('M d, Y') : 'Pending',
+                    $hrApproval ? ucfirst($hrApproval->status) . ' on ' . $hrApproval->created_at->format('M d, Y') : 'Pending',
+                    $leave->contact_number ?? '',
+                    $leave->emergency_contact ?? '',
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=utf-8',
+        ]);
+    }
+
+    /**
+     * Export leave history to CSV/Excel
+     */
+    public function exportHistory(Request $request)
+    {
+        $user = Auth::user();
+        $department = $user->department;
+
+        // Get leaves where department head has taken action
+        $leaveHistory = LeaveRequest::with(['user', 'leaveType', 'approvals'])
+            ->whereHas('user', function($query) use ($department) {
+                $query->where('department_id', $department->id);
+            })
+            ->whereHas('approvals', function($query) use ($user) {
+                $query->where('level', 'department_head')
+                      ->where('approver_id', $user->id);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $filename = 'leave_history_' . $department->name . '_' . date('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function() use ($leaveHistory) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+
+            fputcsv($file, [
+                'Employee Name',
+                'Position',
+                'Leave Type',
+                'Start Date',
+                'End Date',
+                'Total Days',
+                'Reason',
+                'Status',
+                'Applied Date',
+                'Decision Date',
+                'Remarks',
+            ]);
+
+            foreach ($leaveHistory as $leave) {
+                $deptApproval = $leave->approvals->where('level', 'department_head')->first();
+
+                fputcsv($file, [
+                    $leave->user->name ?? 'N/A',
+                    $leave->user->designation ?? $leave->user->position ?? 'N/A',
+                    $leave->leaveType->name ?? 'N/A',
+                    $leave->start_date ? $leave->start_date->format('M d, Y') : 'N/A',
+                    $leave->end_date ? $leave->end_date->format('M d, Y') : 'N/A',
+                    $leave->total_days ?? 0,
+                    $leave->reason ?? '',
+                    ucfirst($leave->status ?? 'pending'),
+                    $leave->created_at ? $leave->created_at->format('M d, Y') : 'N/A',
+                    $deptApproval ? $deptApproval->created_at->format('M d, Y') : 'N/A',
+                    $deptApproval->remarks ?? '',
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=utf-8',
+        ]);
+    }
+
+    /**
+     * Export team members list to CSV/Excel
+     */
+    public function exportTeamMembers(Request $request)
+    {
+        $user = Auth::user();
+        $department = $user->department;
+
+        $teamMembers = User::where('department_id', $department->id)
+            ->where('id', '!=', $user->id)
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get();
+
+        $filename = 'team_members_' . $department->name . '_' . date('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function() use ($teamMembers) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+
+            fputcsv($file, [
+                'Employee ID',
+                'Employee Name',
+                'Position',
+                'Email',
+                'Phone',
+                'Leave Balance',
+                'Current Status',
+                'Last Leave Date',
+                'Total Leaves Taken (This Year)',
+            ]);
+
+            foreach ($teamMembers as $member) {
+                $isOnLeave = LeaveRequest::where('user_id', $member->id)
+                    ->where('status', 'approved')
+                    ->whereDate('start_date', '<=', now())
+                    ->whereDate('end_date', '>=', now())
+                    ->exists();
+
+                $lastLeave = LeaveRequest::where('user_id', $member->id)
+                    ->where('status', 'approved')
+                    ->orderBy('end_date', 'desc')
+                    ->first();
+
+                $totalLeavesThisYear = LeaveRequest::where('user_id', $member->id)
+                    ->where('status', 'approved')
+                    ->whereYear('start_date', now()->year)
+                    ->sum('total_days');
+
+                fputcsv($file, [
+                    $member->employee_id ?? 'N/A',
+                    $member->name ?? 'N/A',
+                    $member->designation ?? $member->position ?? 'N/A',
+                    $member->email ?? 'N/A',
+                    $member->phone ?? 'N/A',
+                    $member->leave_balance ?? 21,
+                    $isOnLeave ? 'On Leave' : 'Available',
+                    $lastLeave ? Carbon::parse($lastLeave->end_date)->format('M d, Y') : 'N/A',
+                    $totalLeavesThisYear,
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=utf-8',
+        ]);
+    }
+
+    /**
+     * Export team calendar / leave schedule to CSV/Excel
+     */
+    public function exportCalendar(Request $request)
+    {
+        $user = Auth::user();
+        $department = $user->department;
+
+        // Get all approved leaves for the department (current month + upcoming)
+        $leaveSchedule = LeaveRequest::with(['user', 'leaveType'])
+            ->whereHas('user', function($query) use ($department) {
+                $query->where('department_id', $department->id);
+            })
+            ->where('status', 'approved')
+            ->where('end_date', '>=', now()->startOfMonth())
+            ->orderBy('start_date')
+            ->get();
+
+        $filename = 'team_calendar_' . $department->name . '_' . date('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function() use ($leaveSchedule) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+
+            fputcsv($file, [
+                'Employee Name',
+                'Leave Type',
+                'Start Date',
+                'End Date',
+                'Total Days',
+                'Reason',
+                'Status',
+            ]);
+
+            foreach ($leaveSchedule as $leave) {
+                fputcsv($file, [
+                    $leave->user->name ?? 'N/A',
+                    $leave->leaveType->name ?? 'N/A',
+                    $leave->start_date ? $leave->start_date->format('M d, Y') : 'N/A',
+                    $leave->end_date ? $leave->end_date->format('M d, Y') : 'N/A',
+                    $leave->total_days ?? 0,
+                    $leave->reason ?? '',
+                    ucfirst($leave->status ?? 'approved'),
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=utf-8',
+        ]);
+    }
+
 // Add this method to your DashboardController class
 private function getLeaveStatusWithWorkflow($leaveRequest)
 {

@@ -91,9 +91,9 @@
                             <option value="week">Week View</option>
                             <option value="day">Day View</option>
                         </select>
-                        <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+                        <a href="{{ route('head.calendar.export') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 inline-flex items-center">
                             <i class="fas fa-download mr-2"></i>Export
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>

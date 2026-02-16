@@ -78,9 +78,9 @@
                                    id="searchInput">
                             <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
                         </div>
-                        <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+                        <a href="{{ route('head.team.members.export') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 inline-flex items-center">
                             <i class="fas fa-download mr-2"></i>Export
-                        </button>
+                        </a>
                     </div>
                 </div>
 

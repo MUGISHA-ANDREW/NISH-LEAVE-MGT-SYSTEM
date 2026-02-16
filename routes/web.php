@@ -91,6 +91,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports', [DeptHeadDashboardController::class, 'reports'])->name('head.reports');
         Route::get('/team-members', [DeptHeadDashboardController::class, 'teamMembers'])->name('head.team.members');
         Route::get('/leave-policies', [DeptHeadDashboardController::class, 'leavePolicies'])->name('head.leave.policies');
+
+        // Export Routes
+        Route::get('/reports/export', [DeptHeadDashboardController::class, 'exportReports'])->name('head.reports.export');
+        Route::get('/leave-history/export', [DeptHeadDashboardController::class, 'exportHistory'])->name('head.history.export');
+        Route::get('/team-members/export', [DeptHeadDashboardController::class, 'exportTeamMembers'])->name('head.team.members.export');
+        Route::get('/team-calendar/export', [DeptHeadDashboardController::class, 'exportCalendar'])->name('head.calendar.export');
     });
 
     // HR Admin Routes

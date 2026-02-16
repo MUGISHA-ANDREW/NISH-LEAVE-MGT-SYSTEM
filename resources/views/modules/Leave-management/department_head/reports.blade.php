@@ -48,9 +48,9 @@
                             </select>
                         </div>
                         <div class="flex items-end">
-                            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+                            <a href="{{ route('head.reports.export') }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 inline-flex items-center">
                                 <i class="fas fa-download mr-2"></i>Export Report
-                            </button>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -198,9 +198,9 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-lg font-semibold text-gray-800">Detailed Leave Report</h3>
-                    <button class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200">
+                    <a href="{{ route('head.reports.export') }}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 inline-flex items-center">
                         <i class="fas fa-file-excel mr-2"></i>Export to Excel
-                    </button>
+                    </a>
                 </div>
                 
                 <div class="overflow-x-auto">
