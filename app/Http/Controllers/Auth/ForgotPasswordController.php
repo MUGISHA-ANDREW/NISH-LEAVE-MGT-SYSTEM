@@ -49,6 +49,9 @@ class ForgotPasswordController extends Controller
      */
     public function sendResetLink(Request $request)
     {
+        // Increase execution time for SMTP operations
+        set_time_limit(120);
+
         try {
             $request->validate([
                 'email' => 'required|email',
