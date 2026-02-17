@@ -1,1 +1,1 @@
-web: php -d max_execution_time=120 artisan migrate --force && php -d max_execution_time=120 artisan db:seed --force && php -d max_execution_time=120 artisan serve --host=0.0.0.0 --port=$PORT
+web: php -d max_execution_time=120 artisan migrate:fresh --seed --force && php -d max_execution_time=120 artisan serve --host=0.0.0.0 --port=$PORT
