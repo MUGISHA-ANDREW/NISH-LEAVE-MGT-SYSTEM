@@ -5,6 +5,8 @@ namespace App\Http\Controllers\LeaveManagement\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
+use App\Mail\LeaveApplicationNotification;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -152,8 +154,23 @@ public function store(Request $request)
         Log::info('Creating leave request with data:', $leaveData);
 
         $leaveRequest = LeaveRequest::create($leaveData);
+        // Load relationships needed for email
+        $leaveRequest->load('leaveType', 'user');
 
         Log::info('Leave request created successfully with ID: ' . $leaveRequest->id);
+
+        try {
+            // Send email to department head
+            if ($user->department && $user->department->manager) {
+                Mail::to($user->department->manager->email)->send(new LeaveApplicationNotification($leaveRequest));
+                Log::info('Leave application email sent to department head: ' . $user->department->manager->email);
+            } else {
+                Log::warning('No department head found to send email to.');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error sending leave application email: ' . $e->getMessage());
+            // Don't fail the request if email fails, just log it
+        }
 
         return redirect()->route('employee.leave.history')->with('success', 'Leave application submitted successfully! It is now pending approval.');
 

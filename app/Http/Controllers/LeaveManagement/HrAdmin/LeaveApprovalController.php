@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\Department;
 use App\Models\LeaveType;
 use App\Models\Approval;
+use App\Mail\LeaveApprovedNotification;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -188,6 +190,16 @@ class LeaveApprovalController extends Controller
         ]);
 
         DB::commit();
+
+        try {
+            // Send email to employee
+            if ($leaveRequest->user && $leaveRequest->user->email) {
+                Mail::to($leaveRequest->user->email)->send(new LeaveApprovedNotification($leaveRequest));
+                Log::info('Leave approval notification sent to user: ' . $leaveRequest->user->email);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error sending leave approval email: ' . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'Leave request approved successfully.');
 
